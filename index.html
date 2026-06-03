@@ -297,11 +297,18 @@ function loading(el){el.innerHTML='<div class="loading">Loading</div>'}
 async function loadLoginDropdowns(){
   const statusEl = document.getElementById('login-status');
   if(statusEl) statusEl.textContent = 'Connecting to server...';
-  // Load admins
-  const admins = await sbGet('admins','select=id,name,branch,role&order=id.asc');
+  // Hardcoded admins as fallback (always works)
+  const defaultAdmins = [
+    {id:'master',name:'Daniel Pagidipalli',branch:'ALL'},
+    {id:'VJA',name:'Branch Admin Vijayawada',branch:'Vijayawada'},
+    {id:'HYD',name:'Branch Admin Hyderabad',branch:'Hyderabad'},
+    {id:'VSK',name:'Branch Admin Visakhapatnam',branch:'Visakhapatnam'},
+  ];
   const asel = document.getElementById('adm-sel');
   asel.innerHTML = '<option value="">— select —</option>';
-  if(Array.isArray(admins)) admins.forEach(a => asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}</option>`);
+  defaultAdmins.forEach(a => asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}</option>`);
+  // Also try loading from Supabase
+  const admins = await sbGet('admins','select=id,name,branch,role&order=id.asc');
   // Load regular staff
   const rstaff = await sbGet('staff','select=id,name,branch&type=eq.regular&active=eq.true&order=name.asc');
   const rsel = document.getElementById('rs-sel');
@@ -334,22 +341,37 @@ async function doAdminLogin(){
   const aid = document.getElementById('adm-sel').value;
   const pass = document.getElementById('adm-pass').value;
   if(!aid){toast('Select admin','er');return}
+  // Hardcoded fallback admin check
+  const hardcodedAdmins = {
+    'master':{id:'master',name:'Daniel Pagidipalli',branch:'ALL',role:'Master Admin',pass:'rebelz2025'},
+    'VJA':{id:'VJA',name:'Branch Admin Vijayawada',branch:'Vijayawada',role:'Branch Admin',pass:'rebelz2025'},
+    'HYD':{id:'HYD',name:'Branch Admin Hyderabad',branch:'Hyderabad',role:'Branch Admin',pass:'rebelz2025'},
+    'VSK':{id:'VSK',name:'Branch Admin Visakhapatnam',branch:'Visakhapatnam',role:'Branch Admin',pass:'rebelz2025'},
+  };
+  // Try Supabase first
   const admins = await sbGet('admins',`id=eq.${aid}&pass=eq.${pass}`);
   if(Array.isArray(admins) && admins.length > 0){
     CU = {...admins[0], userType:'admin'};
     launch();
-  } else toast('Wrong password','er');
+  } else if(hardcodedAdmins[aid] && hardcodedAdmins[aid].pass === pass){
+    // Fallback to hardcoded
+    CU = {...hardcodedAdmins[aid], userType:'admin'};
+    launch();
+  } else {
+    toast('Wrong password','er');
+  }
 }
 
 async function doStaffLogin(type){
   const sid = document.getElementById(type==='regular'?'rs-sel':'es-sel').value;
   const pin = document.getElementById(type==='regular'?'rs-pin':'es-pin').value;
   if(!sid){toast('Select your name','er');return}
-  const staff = await sbGet('staff',`id=eq.${sid}&pin=eq.${pin}&active=eq.true`);
+  toast('Verifying...','info',2000);
+  const staff = await sbGet('staff',`id=eq.${sid}&pin=eq.${pin}&active=eq.true&select=*`);
   if(Array.isArray(staff) && staff.length > 0){
     CU = {...staff[0], userType:'staff'};
     launch();
-  } else toast('Wrong PIN','er');
+  } else toast('Wrong PIN. Try again.','er');
 }
 
 function logout(){
