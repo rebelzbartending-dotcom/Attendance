@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rebelz Attendance System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#E8A020;--gold-l:#F5C842;--gold-dim:rgba(232,160,32,.15);
+  --dk:#0D0D0D;--dk2:#161616;--dk3:#1E1E1E;--dk4:#282828;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.12);
+  --text:#F0EDE8;--muted:#787672;--muted2:#555;
+  --green:#27AE60;--green-dim:rgba(39,174,96,.15);
+  --red:#E74C3C;--red-dim:rgba(231,76,60,.15);
+  --amber:#F39C12;--amber-dim:rgba(243,156,18,.15);
+  --blue:#2E86C1;--blue-dim:rgba(46,134,193,.15);
+  --purple:#8E44AD;--purple-dim:rgba(142,68,173,.15);
+  --ff:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--dk);color:var(--text);font-family:var(--fb);font-size:14px;min-height:100vh}
+.hidden{display:none!important}
+input,select,textarea{font-family:var(--fb);font-size:13px;color:var(--text);background:var(--dk3);border:1px solid var(--border2);border-radius:9px;padding:9px 13px;outline:none;transition:border .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--gold)}
+select option{background:var(--dk3)}
+label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
+
+/* LOGIN */
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% -10%,rgba(232,160,32,.18) 0%,transparent 55%),var(--dk)}
+.lbox{background:var(--dk2);border:1px solid var(--border2);border-radius:22px;padding:2.5rem 2rem;width:100%;max-width:370px}
+.llogo{font-family:var(--ff);font-size:30px;font-weight:800;color:var(--gold);letter-spacing:-1.5px;text-align:center}
+.lsub{text-align:center;color:var(--muted);font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:2rem;margin-top:3px}
+.ltabs{display:flex;background:var(--dk3);border-radius:11px;padding:4px;margin-bottom:1.5rem;gap:4px}
+.ltab{flex:1;padding:8px;border-radius:8px;border:none;background:none;color:var(--muted);font-family:var(--fb);font-size:13px;cursor:pointer;transition:all .2s}
+.ltab.on{background:var(--gold);color:var(--dk);font-weight:600}
+.frow{margin-bottom:13px}
+.btn-gold{width:100%;padding:12px;background:var(--gold);color:var(--dk);border:none;border-radius:11px;font-family:var(--ff);font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.btn-gold:hover{background:var(--gold-l);transform:translateY(-1px)}
+.lhint{text-align:center;font-size:11px;color:var(--muted);margin-top:.75rem}
+.lhint b{color:var(--gold)}
+
+/* SHELL */
+#app{display:flex;min-height:100vh}
+.sidebar{width:230px;flex-shrink:0;background:var(--dk2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.25rem 0;position:fixed;top:0;left:0;bottom:0;z-index:100;transition:transform .3s}
+.slogo{font-family:var(--ff);font-size:19px;font-weight:800;color:var(--gold);padding:0 1.25rem 1rem;border-bottom:1px solid var(--border);letter-spacing:-.5px}
+.slogo span{display:block;font-size:9px;font-weight:400;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;margin-top:2px}
+.suser{padding:.75rem 1.25rem;border-bottom:1px solid var(--border);margin-bottom:.5rem}
+.su-name{font-size:13px;font-weight:600}
+.su-role{font-size:11px;color:var(--muted);margin-top:2px}
+.su-id{font-size:11px;color:var(--gold);font-family:monospace;margin-top:2px}
+.su-branch{font-size:11px;color:var(--amber);margin-top:1px}
+nav{flex:1;padding:0 .6rem;overflow-y:auto}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:10px;color:var(--muted);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;margin-bottom:1px;border:none;background:none;width:100%;text-align:left}
+.ni:hover{background:var(--dk3);color:var(--text)}
+.ni.on{background:var(--gold-dim);color:var(--gold)}
+.ni .ic{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.nbadge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:20px;font-weight:600}
+.nsep{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:1.5px;padding:8px 11px 3px;font-weight:500}
+.sbot{padding:.75rem 1.25rem;border-top:1px solid var(--border)}
+.btnout{width:100%;padding:8px;background:var(--dk3);border:1px solid var(--border);border-radius:9px;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s;font-family:var(--fb)}
+.btnout:hover{color:var(--red);border-color:rgba(231,76,60,.4)}
+
+/* MAIN */
+.main{margin-left:230px;flex:1;padding:1.5rem;max-width:100%}
+.page{display:none}
+.page.on{display:block}
+.ptitle{font-family:var(--ff);font-size:22px;font-weight:700;letter-spacing:-.5px}
+.psub{color:var(--muted);font-size:13px;margin-top:3px;margin-bottom:1.5rem}
+
+/* CARDS */
+.card{background:var(--dk2);border:1px solid var(--border);border-radius:16px;padding:1.25rem;margin-bottom:1rem}
+.ctitle{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:1rem}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1rem}
+.stat{background:var(--dk3);border-radius:12px;padding:1rem}
+.sv{font-family:var(--ff);font-size:24px;font-weight:700;color:var(--gold)}
+.sl{font-size:12px;color:var(--muted);margin-top:3px}
+
+/* BADGES */
+.b{display:inline-block;font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px}
+.bg{background:var(--green-dim);color:var(--green)}
+.br{background:var(--red-dim);color:var(--red)}
+.ba{background:var(--amber-dim);color:var(--amber)}
+.bb{background:var(--blue-dim);color:var(--blue)}
+.bp{background:var(--purple-dim);color:var(--purple)}
+.bgold{background:var(--gold-dim);color:var(--gold)}
+
+/* BTNS */
+.btn{padding:8px 18px;border-radius:9px;border:1px solid var(--border2);background:var(--dk3);color:var(--text);font-family:var(--fb);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn:hover{background:var(--dk4)}
+.btn-p{background:var(--gold);color:var(--dk);border-color:var(--gold);font-weight:600}
+.btn-p:hover{background:var(--gold-l)}
+.btn-d{background:var(--red-dim);color:var(--red);border-color:rgba(231,76,60,.3)}
+.btn-d:hover{background:rgba(231,76,60,.25)}
+.btn-s{background:var(--green-dim);color:var(--green);border-color:rgba(39,174,96,.3)}
+.btn-s:hover{background:rgba(39,174,96,.25)}
+.btn-b{background:var(--blue-dim);color:var(--blue);border-color:rgba(46,134,193,.3)}
+.btn-b:hover{background:rgba(46,134,193,.25)}
+.bsm{padding:5px 11px;font-size:12px}
+.grow{display:flex;gap:8px;flex-wrap:wrap;margin-top:.9rem;align-items:center}
+
+/* FORM GRIDS */
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.fg4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:11px}
+
+/* TABLE */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:9px 12px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);font-weight:500;white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015)}
+.av{width:32px;height:32px;border-radius:50%;background:var(--gold-dim);color:var(--gold);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:var(--ff)}
+.av-r{background:var(--green-dim);color:var(--green)}
+.av-e{background:var(--blue-dim);color:var(--blue)}
+
+/* CLOCK IN/OUT */
+.clock-card{max-width:440px;margin:0 auto;background:var(--dk2);border:1px solid var(--border2);border-radius:22px;padding:2rem;text-align:center}
+.clock-time{font-family:var(--ff);font-size:42px;font-weight:800;color:var(--gold);letter-spacing:-2px;margin:.5rem 0}
+.clock-date{font-size:13px;color:var(--muted);margin-bottom:1.5rem}
+.clock-status{border-radius:14px;padding:1rem;margin-bottom:1.5rem;font-size:14px}
+.cs-in{background:var(--green-dim);border:1px solid rgba(39,174,96,.3);color:var(--green)}
+.cs-out{background:var(--dk3);border:1px solid var(--border);color:var(--muted)}
+.cs-done{background:var(--gold-dim);border:1px solid rgba(232,160,32,.3);color:var(--gold)}
+.cs-incomplete{background:var(--amber-dim);border:1px solid rgba(243,156,18,.3);color:var(--amber)}
+.big-btn{width:100%;padding:18px;border:none;border-radius:14px;font-family:var(--ff);font-size:17px;font-weight:800;cursor:pointer;transition:all .2s;letter-spacing:.3px}
+.bb-in{background:linear-gradient(135deg,var(--green),#2ECC71);color:#fff}
+.bb-in:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(39,174,96,.3)}
+.bb-out{background:linear-gradient(135deg,var(--gold),var(--gold-l));color:var(--dk)}
+.bb-out:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(232,160,32,.3)}
+
+/* MARK PRESENT */
+.mark-card{max-width:460px;margin:0 auto;background:var(--dk2);border:1px solid var(--border2);border-radius:22px;padding:2rem}
+.mu{display:flex;align-items:center;gap:14px;background:var(--dk3);border-radius:12px;padding:1rem;margin-bottom:1.5rem}
+.mu-info .name{font-family:var(--ff);font-size:16px;font-weight:700}
+.mu-info .role{font-size:12px;color:var(--muted);margin-top:3px}
+.mu-info .sid{font-size:12px;color:var(--gold);font-family:monospace;margin-top:2px}
+.mark-btn{width:100%;padding:18px;border:none;border-radius:14px;font-family:var(--ff);font-size:18px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,var(--gold),var(--gold-l));color:var(--dk);transition:all .2s;margin-top:1rem}
+.mark-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(232,160,32,.3)}
+
+/* SALARY */
+.sal-hero{background:linear-gradient(135deg,rgba(232,160,32,.18),rgba(232,160,32,.05));border:1px solid rgba(232,160,32,.3);border-radius:16px;padding:1.5rem;margin-bottom:1rem}
+.sal-total{font-family:var(--ff);font-size:36px;font-weight:800;color:var(--gold)}
+.sal-lbl{font-size:12px;color:var(--muted);margin-top:4px}
+.sal-breakdown{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:1rem}
+.sbd{background:rgba(0,0,0,.2);border-radius:10px;padding:.75rem}
+.sbd-v{font-family:var(--ff);font-size:18px;font-weight:700}
+.sbd-l{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* FILTER ROW */
+.frow-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
+.frow-bar select,.frow-bar input{width:auto;min-width:120px}
+
+/* DIVIDER */
+.div{border:none;border-top:1px solid var(--border);margin:1rem 0}
+
+/* SECTION SEP */
+.ssep{font-size:10px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:2px;margin:1.2rem 0 .6rem;padding-left:2px}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--dk2);border:1px solid var(--border2);border-radius:13px;padding:11px 18px;font-size:13px;display:none;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.5);max-width:300px}
+.toast.show{display:flex;align-items:center;gap:10px;animation:tin .3s ease}
+.toast.ok{border-color:rgba(39,174,96,.5)}
+.toast.er{border-color:rgba(231,76,60,.5)}
+@keyframes tin{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--dk2);border:1px solid var(--border2);border-radius:18px;padding:1.5rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal-title{font-family:var(--ff);font-size:17px;font-weight:700;margin-bottom:1.25rem}
+
+/* RESPONSIVE */
+@media(max-width:700px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .fg2,.fg3,.fg4{grid-template-columns:1fr}
+  .sal-breakdown{grid-template-columns:1fr 1fr}
+  .sgrid{grid-template-columns:1fr 1fr}
+  .mob-menu{display:flex!important}
+}
+.mob-menu{display:none;position:fixed;top:12px;left:12px;z-index:200;background:var(--dk2);border:1px solid var(--border2);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:18px;color:var(--gold)}
+.empty{text-align:center;padding:2.5rem;color:var(--muted);font-size:13px}
+.info-box{background:var(--dk3);border-radius:10px;padding:.75rem 1rem;font-size:12px;color:var(--muted);margin-bottom:1rem;border-left:3px solid var(--gold);line-height:1.6}
+.row-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.row-item:last-child{border-bottom:none}
+code{font-family:monospace;font-size:12px;color:var(--gold);background:var(--gold-dim);padding:2px 6px;border-radius:5px}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<button class="mob-menu" onclick="toggleSidebar()">☰</button>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="lbox">
+    <div class="llogo">REBELZ</div>
+    <div class="lsub">Attendance & Payroll System</div>
+    <div class="ltabs">
+      <button class="ltab on" onclick="switchLTab('admin')">Admin</button>
+      <button class="ltab" onclick="switchLTab('regular')">Regular Staff</button>
+      <button class="ltab" onclick="switchLTab('event')">Event Staff</button>
+    </div>
+
+    <!-- Admin Login -->
+    <div id="lf-admin">
+      <div class="frow"><label>Select Admin</label>
+        <select id="admin-sel">
+          <option value="">— select —</option>
+          <option value="master">Master Admin (Daniel)</option>
+          <option value="VJA">Branch Admin — Vijayawada</option>
+          <option value="HYD">Branch Admin — Hyderabad</option>
+          <option value="VSK">Branch Admin — Visakhapatnam</option>
+        </select>
+      </div>
+      <div class="frow"><label>Password</label><input type="password" id="admin-pass" placeholder="••••••••"/></div>
+      <button class="btn-gold" onclick="doAdminLogin()">Login</button>
+      <div class="lhint">Master: <b>master / rebelz2025</b> &nbsp;|&nbsp; Branch: <b>branch / rebelz2025</b></div>
+    </div>
+
+    <!-- Regular Staff Login -->
+    <div id="lf-regular" class="hidden">
+      <div class="frow"><label>Select Your Name</label>
+        <select id="rs-sel"><option value="">— select —</option></select>
+      </div>
+      <div class="frow"><label>Your PIN</label><input type="password" id="rs-pin" placeholder="4-digit PIN" maxlength="4"/></div>
+      <button class="btn-gold" onclick="doStaffLogin('regular')">Login</button>
+      <div class="lhint">Contact your branch admin if you forgot PIN</div>
+    </div>
+
+    <!-- Event Staff Login -->
+    <div id="lf-event" class="hidden">
+      <div class="frow"><label>Select Your Name</label>
+        <select id="es-sel"><option value="">— select —</option></select>
+      </div>
+      <div class="frow"><label>Your PIN</label><input type="password" id="es-pin" placeholder="4-digit PIN" maxlength="4"/></div>
+      <button class="btn-gold" onclick="doStaffLogin('event')">Login</button>
+      <div class="lhint">Contact your branch admin if you forgot PIN</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app" class="hidden">
+  <div class="sidebar" id="sidebar">
+    <div class="slogo">REBELZ <span id="gd-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-left:4px;vertical-align:middle;cursor:pointer" onclick="connectGDrive()" title="Connect Google Drive"></span><span>Attendance System</span></div>
+    <div class="suser">
+      <div class="su-name" id="su-name">—</div>
+      <div class="su-role" id="su-role">—</div>
+      <div class="su-id" id="su-id"></div>
+      <div class="su-branch" id="su-branch"></div>
+    </div>
+    <nav id="mainnav"></nav>
+    <div class="sbot"><button class="btnout" onclick="logout()">← Logout</button></div>
+  </div>
+  <div class="main" id="maincontent"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg hidden" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal" id="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════
+let DB = JSON.parse(localStorage.getItem('rzdb_v4')||'null') || {
+  staff:[
+    {id:'VJA-R01',name:'Priya Devi',phone:'9876541001',role:'Office Manager',type:'regular',branch:'Vijayawada',salary:18000,pin:'1111',active:true},
+    {id:'VJA-R02',name:'Suresh Kumar',phone:'9876541002',role:'Event Manager',type:'regular',branch:'Vijayawada',salary:22000,pin:'2222',active:true},
+    {id:'HYD-R01',name:'Kavita Rao',phone:'9876542001',role:'Office Manager',type:'regular',branch:'Hyderabad',salary:17000,pin:'3333',active:true},
+    {id:'HYD-R02',name:'Arjun Nair',phone:'9876542002',role:'Event Manager',type:'regular',branch:'Hyderabad',salary:20000,pin:'4444',active:true},
+    {id:'VSK-R01',name:'Meena Reddy',phone:'9876543001',role:'Office Manager',type:'regular',branch:'Visakhapatnam',salary:16000,pin:'5555',active:true},
+    {id:'VSK-R02',name:'Prasad T',phone:'9876543002',role:'Event Manager',type:'regular',branch:'Visakhapatnam',salary:19000,pin:'6666',active:true},
+    {id:'VJA-001',name:'Ravi Kumar',phone:'9876541010',role:'Senior Bartender',type:'event',branch:'Vijayawada',rate:1800,pin:'7777',active:true},
+    {id:'VJA-002',name:'Vijay Babu',phone:'9876541011',role:'Setup Crew',type:'event',branch:'Vijayawada',rate:800,pin:'8888',active:true},
+    {id:'HYD-001',name:'Manoj Singh',phone:'9876542010',role:'Bartender',type:'event',branch:'Hyderabad',rate:1200,pin:'9999',active:true},
+    {id:'VSK-001',name:'Anita Rao',phone:'9876543010',role:'Barista',type:'event',branch:'Visakhapatnam',rate:1000,pin:'1234',active:true},
+  ],
+  admins:[
+    {id:'master',name:'Daniel Pagidipalli',branch:'ALL',pass:'rebelz2025',role:'Master Admin'},
+    {id:'VJA',name:'Branch Admin VJA',branch:'Vijayawada',pass:'rebelz2025',role:'Branch Admin'},
+    {id:'HYD',name:'Branch Admin HYD',branch:'Hyderabad',pass:'rebelz2025',role:'Branch Admin'},
+    {id:'VSK',name:'Branch Admin VSK',branch:'Visakhapatnam',pass:'rebelz2025',role:'Branch Admin'},
+  ],
+  events:[
+    {id:'EVT-001',name:'Sharma Wedding',date:'2025-06-03',branch:'Vijayawada',status:'open'},
+    {id:'EVT-002',name:'Reddy Reception',date:'2025-06-02',branch:'Hyderabad',status:'open'},
+  ],
+  attendance:[
+    {id:'ATT-001',staffId:'VJA-001',eventId:'EVT-001',date:'2025-06-03',time:'18:30',role:'Senior Bartender',status:'approved',branch:'Vijayawada'},
+    {id:'ATT-002',staffId:'HYD-001',eventId:'EVT-002',date:'2025-06-02',time:'17:00',role:'Bartender',status:'pending',branch:'Hyderabad'},
+    {id:'ATT-003',staffId:'VSK-001',eventId:'EVT-002',date:'2025-06-02',time:'16:30',role:'Barista',status:'pending',branch:'Visakhapatnam'},
+  ],
+  clocklog:[
+    {id:'CLK-001',staffId:'VJA-R01',date:'2025-06-03',inTime:'09:02',outTime:'18:15',status:'complete',branch:'Vijayawada'},
+    {id:'CLK-002',staffId:'VJA-R01',date:'2025-06-02',inTime:'09:10',outTime:'',status:'incomplete',branch:'Vijayawada',adminNote:''},
+    {id:'CLK-003',staffId:'VJA-R02',date:'2025-06-03',inTime:'09:05',outTime:'18:30',status:'complete',branch:'Vijayawada'},
+  ],
+  outsourced:[
+    {id:'EXT-001',eventId:'EVT-001',name:'Ramesh B',role:'Bar Assistant',amount:1200,phone:'',paid:true,branch:'Vijayawada',date:'2025-06-03'},
+  ],
+  monthRates:{},
+  salaryLock:{}
+};
+const BRANCHES=['Vijayawada','Hyderabad','Visakhapatnam'];
+const ROLES=['Senior Bartender','Bartender','Bar Assistant','Barista','Setup Crew','Trainer','Event Manager','Office Manager','Admin'];
+let CU=null;
+function save(){localStorage.setItem('rzdb_v4',JSON.stringify(DB));if(gdToken)setTimeout(gdSync,1000);}
+function ini(n){return n.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).substring(2,5)}
+function mkkey(d){const dt=new Date(d);return dt.toLocaleString('default',{month:'long',year:'numeric'})}
+function today(){return new Date().toISOString().split('T')[0]}
+function nowtime(){return new Date().toTimeString().substring(0,5)}
+function toast(m,t='ok'){const el=document.getElementById('toast');el.className='toast show '+t;el.innerHTML=(t==='ok'?'✓ ':'✗ ')+m;setTimeout(()=>el.className='toast',3000)}
+function canAccess(branch){return CU&&(CU.branch==='ALL'||CU.branch===branch)}
+
+// ═══════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════
+function switchLTab(t){
+  ['admin','regular','event'].forEach(x=>{
+    document.getElementById('lf-'+x).classList.toggle('hidden',x!==t);
+  });
+  document.querySelectorAll('.ltab').forEach((b,i)=>b.classList.toggle('on',['admin','regular','event'][i]===t));
+  if(t==='regular') populateLoginSel('rs-sel','regular');
+  if(t==='event') populateLoginSel('es-sel','event');
+}
+function populateLoginSel(selId,type){
+  const sel=document.getElementById(selId);
+  sel.innerHTML='<option value="">— select —</option>';
+  DB.staff.filter(s=>s.active&&s.type===type).forEach(s=>{
+    sel.innerHTML+=`<option value="${s.id}">${s.name} (${s.id}) — ${s.branch}</option>`;
+  });
+}
+function doAdminLogin(){
+  const aid=document.getElementById('admin-sel').value;
+  const pass=document.getElementById('admin-pass').value;
+  if(!aid){toast('Select an admin','er');return}
+  const adm=DB.admins.find(a=>a.id===aid);
+  if(adm&&pass===adm.pass){CU={...adm,userType:'admin'};launch()}
+  else toast('Wrong password','er');
+}
+function doStaffLogin(type){
+  const sid=document.getElementById(type==='regular'?'rs-sel':'es-sel').value;
+  const pin=document.getElementById(type==='regular'?'rs-pin':'es-pin').value;
+  if(!sid){toast('Select your name','er');return}
+  const s=DB.staff.find(x=>x.id===sid);
+  if(s&&pin===s.pin){CU={...s,userType:'staff'};launch()}
+  else toast('Wrong PIN','er');
+}
+function logout(){CU=null;document.getElementById('login-screen').classList.remove('hidden');document.getElementById('app').classList.add('hidden')}
+function launch(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('su-name').textContent=CU.name;
+  document.getElementById('su-role').textContent=CU.role;
+  document.getElementById('su-id').textContent=CU.id||'';
+  document.getElementById('su-branch').textContent=CU.branch&&CU.branch!=='ALL'?'📍 '+CU.branch:'📍 All Branches';
+  buildNav();
+  const first=CU.userType==='admin'?'dashboard':CU.type==='regular'?'clockin':'markpresent';
+  showPage(first);
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open')}
+
+// ═══════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════
+function buildNav(){
+  const nav=document.getElementById('mainnav');
+  let items=[];
+  if(CU.userType==='admin'){
+    items=[
+      {sep:'Overview'},{id:'dashboard',ic:'⬡',lbl:'Dashboard'},
+      {sep:'Staff'},{id:'staffmgmt',ic:'◈',lbl:'Staff Management'},{id:'adminmgmt',ic:'◎',lbl:'Admin Logins',master:true},
+      {sep:'Events'},{id:'events',ic:'◆',lbl:'Events'},{id:'outsourced',ic:'⬢',lbl:'Outsourced Staff'},
+      {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},{id:'clocklog',ic:'◷',lbl:'Regular Staff Log'},
+      {sep:'Payroll'},{id:'monthrates',ic:'◉',lbl:'Monthly Rates'},{id:'salary',ic:'₹',lbl:'Salary Sheet'},
+    ];
+  } else if(CU.type==='regular'){
+    items=[{id:'clockin',ic:'◷',lbl:'Clock In / Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'}];
+  } else {
+    items=[{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'}];
+  }
+  const pending=DB.attendance.filter(a=>a.status==='pending'&&(CU.branch==='ALL'||a.branch===CU.branch)).length;
+  nav.innerHTML=items.map(item=>{
+    if(item.sep) return `<div class="nsep">${item.sep}</div>`;
+    if(item.master&&CU.id!=='master') return '';
+    const badge=item.badge&&pending>0?`<span class="nbadge" id="appr-badge">${pending}</span>`:'';
+    return `<button class="ni" data-page="${item.id}" onclick="showPage('${item.id}')">${item.ic?`<span class="ic">${item.ic}</span>`:''}<span>${item.lbl}</span>${badge}</button>`;
+  }).join('');
+}
+
+function showPage(id){
+  document.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.page===id));
+  const mc=document.getElementById('maincontent');
+  mc.innerHTML='';
+  const pages={
+    dashboard:pgDashboard,staffmgmt:pgStaff,adminmgmt:pgAdmins,
+    events:pgEvents,outsourced:pgOutsourced,
+    approvals:pgApprovals,clocklog:pgClockLog,reports:pgReports,gdrivesetup:pgGDrivePage,
+    monthrates:pgRates,salary:pgSalary,
+    clockin:pgClockIn,myatt:pgMyAtt,
+    markpresent:pgMark,myrecords:pgMyRecords,
+    mypay:pgMyPay
+  };
+  if(pages[id]) pages[id](mc);
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+function getSundaysInMonth(year,month){
+  let count=0,d=new Date(year,month,1);
+  while(d.getMonth()===month){if(d.getDay()===0)count++;d.setDate(d.getDate()+1);}
+  return count;
+}
+function getWorkingDays(year,month){
+  const total=new Date(year,month+1,0).getDate();
+  return total-getSundaysInMonth(year,month);
+}
+function getEffectiveRate(staffId,monthKey){
+  if(DB.monthRates[monthKey]&&DB.monthRates[monthKey][staffId]!==undefined) return DB.monthRates[monthKey][staffId];
+  const keys=Object.keys(DB.monthRates).sort();
+  for(let i=keys.length-1;i>=0;i--){
+    if(DB.monthRates[keys[i]][staffId]!==undefined) return DB.monthRates[keys[i]][staffId];
+  }
+  const s=DB.staff.find(x=>x.id===staffId);
+  return s?s.rate||0:0;
+}
+function isSunday(dateStr){return new Date(dateStr).getDay()===0}
+function myBranch(){return CU.branch==='ALL'?null:CU.branch}
+
+// ═══════════════════════════════════════════════════════
+// ADMIN PAGES
+// ═══════════════════════════════════════════════════════
+function pgDashboard(el){
+  const branch=myBranch();
+  const activeStaff=DB.staff.filter(s=>s.active&&(!branch||s.branch===branch));
+  const pending=DB.attendance.filter(a=>a.status==='pending'&&(!branch||a.branch===branch)).length;
+  const mk=mkkey(today());
+  const monthAtt=DB.attendance.filter(a=>a.status==='approved'&&mkkey(a.date)===mk&&(!branch||a.branch===branch));
+  const eventsThisMonth=[...new Set(monthAtt.map(a=>a.eventId))].length;
+  let payout=0;
+  activeStaff.forEach(s=>{
+    if(s.type==='regular'){payout+=s.salary||0;}
+    else{const cnt=monthAtt.filter(a=>a.staffId===s.id).length;payout+=cnt*getEffectiveRate(s.id,mk);}
+  });
+  const outCost=DB.outsourced.filter(o=>(!branch||o.branch===branch)&&mkkey(o.date)===mk).reduce((s,o)=>s+o.amount,0);
+
+  el.innerHTML=`
+  <div class="ptitle">Dashboard</div>
+  <div class="psub">${CU.branch==='ALL'?'All branches overview':''+CU.branch+' branch overview'} — ${mk}</div>
+  <div class="sgrid">
+    <div class="stat"><div class="sv">${activeStaff.length}</div><div class="sl">Active Staff</div></div>
+    <div class="stat"><div class="sv" style="color:var(--amber)">${pending}</div><div class="sl">Pending Approvals</div></div>
+    <div class="stat"><div class="sv">${eventsThisMonth}</div><div class="sl">Events This Month</div></div>
+    <div class="stat"><div class="sv">₹${((payout+outCost)/1000).toFixed(1)}k</div><div class="sl">Est. Total Payout</div></div>
+  </div>
+  ${CU.branch==='ALL'?`
+  <div class="card">
+    <div class="ctitle">Branch Breakdown</div>
+    <div class="fg3">${BRANCHES.map(b=>{
+      const bs=DB.staff.filter(s=>s.active&&s.branch===b);
+      const bp=DB.attendance.filter(a=>a.status==='pending'&&a.branch===b).length;
+      return `<div style="background:var(--dk3);border-radius:12px;padding:1rem">
+        <div style="font-family:var(--ff);font-size:14px;font-weight:700;margin-bottom:.75rem;color:var(--gold)">${b}</div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Regular staff</span><span>${bs.filter(s=>s.type==='regular').length}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Event staff</span><span>${bs.filter(s=>s.type==='event').length}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0"><span style="color:var(--muted)">Pending approvals</span><span style="color:${bp>0?'var(--amber)':'var(--muted)'}">${bp}</span></div>
+      </div>`;
+    }).join('')}</div>
+  </div>`:''}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="card">
+      <div class="ctitle">Recent Attendance</div>
+      ${DB.attendance.slice(-6).reverse().map(a=>{
+        const s=DB.staff.find(x=>x.id===a.staffId);
+        const e=DB.events.find(x=>x.id===a.eventId);
+        if(!s) return '';
+        if(branch&&s.branch!==branch) return '';
+        return `<div class="row-item">
+          <div class="av av-e">${ini(s.name)}</div>
+          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted)">${e?e.name:'?'} · ${a.date}</div></div>
+          <span class="b ${a.status==='approved'?'bg':a.status==='rejected'?'br':'ba'}">${a.status}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="card">
+      <div class="ctitle">Today's Clock Log</div>
+      ${DB.clocklog.filter(c=>c.date===today()&&(!branch||c.branch===branch)).slice(0,5).map(c=>{
+        const s=DB.staff.find(x=>x.id===c.staffId);
+        if(!s) return '';
+        return `<div class="row-item">
+          <div class="av av-r">${ini(s.name)}</div>
+          <div style="flex:1"><div style="font-size:13px;font-weight:500">${s.name}</div>
+          <div style="font-size:11px;color:var(--muted)">In: ${c.inTime} ${c.outTime?'· Out: '+c.outTime:''}</div></div>
+          <span class="b ${c.status==='complete'?'bg':c.status==='incomplete'?'ba':'br'}">${c.status}</span>
+        </div>`;
+      }).join('')||'<div class="empty">No clock entries today</div>'}
+    </div>
+  </div>`;
+}
+
+function pgStaff(el){
+  const branch=myBranch();
+  el.innerHTML=`
+  <div class="ptitle">Staff Management</div>
+  <div class="psub">Add, edit and manage all staff members.</div>
+  <div class="card">
+    <div class="ctitle">Add New Staff Member</div>
+    <div class="fg3">
+      <div class="frow"><label>Full Name</label><input type="text" id="ns-name" placeholder="e.g. Ravi Kumar"></div>
+      <div class="frow"><label>Phone</label><input type="text" id="ns-phone" placeholder="9876543210"></div>
+      <div class="frow"><label>Branch</label>
+        <select id="ns-branch">${(branch?[branch]:BRANCHES).map(b=>`<option>${b}</option>`).join('')}</select>
+      </div>
+    </div>
+    <div class="fg4">
+      <div class="frow"><label>Role</label>
+        <select id="ns-role">${ROLES.map(r=>`<option>${r}</option>`).join('')}</select>
+      </div>
+      <div class="frow"><label>Staff Type</label>
+        <select id="ns-type" onchange="toggleRateLbl()"><option value="event">Event-based</option><option value="regular">Regular (Monthly)</option></select>
+      </div>
+      <div class="frow"><label id="ns-rate-lbl">Rate per Event (₹)</label><input type="number" id="ns-rate" placeholder="e.g. 1200"></div>
+      <div class="frow"><label>Login PIN (4 digits)</label><input type="text" id="ns-pin" placeholder="e.g. 1234" maxlength="4"></div>
+    </div>
+    <div class="grow"><button class="btn btn-p" onclick="addStaff()">+ Add Staff</button></div>
+  </div>
+  <div class="card">
+    <div class="frow-bar">
+      <div class="ctitle" style="margin:0;flex:1">All Staff</div>
+      ${!branch?`<select id="fbranch" onchange="renderStaffTbl()"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
+      <select id="ftype" onchange="renderStaffTbl()"><option value="">All Types</option><option value="event">Event</option><option value="regular">Regular</option></select>
+    </div>
+    <div class="tw" id="staff-tbl"></div>
+  </div>`;
+  renderStaffTbl();
+}
+function toggleRateLbl(){
+  const t=document.getElementById('ns-type').value;
+  document.getElementById('ns-rate-lbl').textContent=t==='regular'?'Monthly Salary (₹)':'Rate per Event (₹)';
+}
+function renderStaffTbl(){
+  const fb=document.getElementById('fbranch')?.value||myBranch()||'';
+  const ft=document.getElementById('ftype')?.value||'';
+  let list=DB.staff.filter(s=>s.active);
+  if(fb)list=list.filter(s=>s.branch===fb);
+  if(ft)list=list.filter(s=>s.type===ft);
+  const el=document.getElementById('staff-tbl');
+  if(!list.length){el.innerHTML='<div class="empty">No staff found.</div>';return}
+  el.innerHTML=`<table><thead><tr><th>Name</th><th>ID</th><th>Role</th><th>Branch</th><th>Type</th><th>Salary/Rate</th><th>PIN</th><th>Actions</th></tr></thead><tbody>
+  ${list.map(s=>`<tr>
+    <td><div style="display:flex;align-items:center;gap:8px"><div class="av ${s.type==='regular'?'av-r':'av-e'}">${ini(s.name)}</div>${s.name}</div></td>
+    <td><code>${s.id}</code></td><td>${s.role}</td><td>${s.branch}</td>
+    <td><span class="b ${s.type==='regular'?'bg':'bb'}">${s.type==='regular'?'Regular':'Event'}</span></td>
+    <td>${s.type==='regular'?'₹'+(s.salary||0).toLocaleString()+'/mo':'₹'+(s.rate||0).toLocaleString()+'/event'}</td>
+    <td><code style="color:var(--muted)">${s.pin}</code></td>
+    <td><div style="display:flex;gap:5px"><button class="btn bsm btn-b" onclick="editStaff('${s.id}')">Edit</button><button class="btn bsm btn-d" onclick="removeStaff('${s.id}')">Remove</button></div></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+function addStaff(){
+  const name=document.getElementById('ns-name').value.trim();
+  const phone=document.getElementById('ns-phone').value.trim();
+  const branch=document.getElementById('ns-branch').value;
+  const role=document.getElementById('ns-role').value;
+  const type=document.getElementById('ns-type').value;
+  const rate=parseFloat(document.getElementById('ns-rate').value)||0;
+  const pin=document.getElementById('ns-pin').value.trim();
+  if(!name){toast('Name required','er');return}
+  if(pin.length!==4||isNaN(Number(pin))){toast('PIN must be 4 digits','er');return}
+  const brCode=branch==='Vijayawada'?'VJA':branch==='Hyderabad'?'HYD':'VSK';
+  const pfx=type==='regular'?brCode+'-R':brCode+'-';
+  const existing=DB.staff.filter(s=>s.id.startsWith(pfx)&&s.active).length;
+  const newId=pfx+String(existing+1).padStart(type==='regular'?2:3,'0');
+  DB.staff.push({id:newId,name,phone,role,type,branch,[type==='regular'?'salary':'rate']:rate,pin,active:true});
+  save();toast(name+' added as '+newId);
+  document.getElementById('ns-name').value='';document.getElementById('ns-pin').value='';document.getElementById('ns-rate').value='';
+  renderStaffTbl();populateLoginSel('rs-sel','regular');populateLoginSel('es-sel','event');
+}
+function editStaff(id){
+  const s=DB.staff.find(x=>x.id===id);
+  if(!s)return;
+  openModal('Edit Staff — '+s.name,`
+    <div class="fg2">
+      <div class="frow"><label>Full Name</label><input type="text" id="es-name" value="${s.name}"></div>
+      <div class="frow"><label>Phone</label><input type="text" id="es-phone" value="${s.phone||''}"></div>
+    </div>
+    <div class="fg2">
+      <div class="frow"><label>${s.type==='regular'?'Monthly Salary (₹)':'Rate per Event (₹)'}</label><input type="number" id="es-rate" value="${s.type==='regular'?s.salary||0:s.rate||0}"></div>
+      <div class="frow"><label>PIN</label><input type="text" id="es-pin" value="${s.pin}" maxlength="4"></div>
+    </div>
+    <div class="grow">
+      <button class="btn btn-p" onclick="saveEditStaff('${id}')">Save Changes</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+function saveEditStaff(id){
+  const s=DB.staff.find(x=>x.id===id);
+  if(!s)return;
+  s.name=document.getElementById('es-name').value.trim()||s.name;
+  s.phone=document.getElementById('es-phone').value.trim();
+  const rate=parseFloat(document.getElementById('es-rate').value)||0;
+  if(s.type==='regular')s.salary=rate;else s.rate=rate;
+  const pin=document.getElementById('es-pin').value.trim();
+  if(pin.length===4&&!isNaN(Number(pin)))s.pin=pin;
+  save();closeModal();toast('Staff updated ✓');renderStaffTbl();
+}
+function removeStaff(id){
+  const s=DB.staff.find(x=>x.id===id);
+  if(confirm('Remove '+s?.name+'? Their records will be kept.')){
+    DB.staff=DB.staff.map(x=>x.id===id?{...x,active:false}:x);
+    save();renderStaffTbl();toast('Removed');
+  }
+}
+
+function pgAdmins(el){
+  if(CU.id!=='master'){el.innerHTML='<div class="empty">Master admin only.</div>';return}
+  el.innerHTML=`
+  <div class="ptitle">Admin Logins</div>
+  <div class="psub">Manage branch admin accounts.</div>
+  <div class="card">
+    <div class="ctitle">Add Admin</div>
+    <div class="fg3">
+      <div class="frow"><label>Name</label><input type="text" id="na-name" placeholder="Branch Manager Name"></div>
+      <div class="frow"><label>Branch</label><select id="na-branch">${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select></div>
+      <div class="frow"><label>Password</label><input type="password" id="na-pass" placeholder="Set password"></div>
+    </div>
+    <div class="grow"><button class="btn btn-p" onclick="addAdmin()">+ Add Admin</button></div>
+  </div>
+  <div class="card">
+    <div class="ctitle">All Admins</div>
+    <table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>Actions</th></tr></thead><tbody>
+    ${DB.admins.map(a=>`<tr>
+      <td style="font-weight:500">${a.name}</td>
+      <td>${a.branch}</td>
+      <td><span class="b ${a.id==='master'?'bgold':'bb'}">${a.role}</span></td>
+      <td>${a.id!=='master'?`<button class="btn bsm btn-d" onclick="removeAdmin('${a.id}')">Remove</button>`:'<span style="color:var(--muted);font-size:12px">Protected</span>'}</td>
+    </tr>`).join('')}</tbody></table>
+  </div>`;
+}
+function addAdmin(){
+  const name=document.getElementById('na-name').value.trim();
+  const branch=document.getElementById('na-branch').value;
+  const pass=document.getElementById('na-pass').value;
+  if(!name||!pass){toast('Name and password required','er');return}
+  const id=branch.substring(0,3).toUpperCase();
+  DB.admins=DB.admins.filter(a=>a.id!==id);
+  DB.admins.push({id,name,branch,pass,role:'Branch Admin'});
+  save();toast('Admin added');pgAdmins(document.getElementById('maincontent'));
+}
+function removeAdmin(id){
+  if(confirm('Remove this admin?')){DB.admins=DB.admins.filter(a=>a.id!==id);save();pgAdmins(document.getElementById('maincontent'));}
+}
+
+function pgEvents(el){
+  const branch=myBranch();
+  el.innerHTML=`
+  <div class="ptitle">Events</div>
+  <div class="psub">Create and manage events branch-wise.</div>
+  <div class="card">
+    <div class="ctitle">Create Event</div>
+    <div class="fg3">
+      <div class="frow"><label>Event Name</label><input type="text" id="ne-name" placeholder="e.g. Sharma Wedding"></div>
+      <div class="frow"><label>Date</label><input type="date" id="ne-date" value="${today()}"></div>
+      <div class="frow"><label>Branch</label><select id="ne-branch">${(branch?[branch]:BRANCHES).map(b=>`<option>${b}</option>`).join('')}</select></div>
+    </div>
+    <div class="grow"><button class="btn btn-p" onclick="addEvent()">+ Create Event</button></div>
+  </div>
+  <div class="card">
+    <div class="frow-bar">
+      <div class="ctitle" style="margin:0;flex:1">All Events</div>
+      ${!branch?`<select onchange="this.dataset.v=this.value;renderEvtTbl()" id="fev-branch"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
+    </div>
+    <div class="tw" id="evt-tbl"></div>
+  </div>`;
+  renderEvtTbl();
+}
+function renderEvtTbl(){
+  const fb=document.getElementById('fev-branch')?.value||myBranch()||'';
+  let list=[...DB.events].reverse();
+  if(fb)list=list.filter(e=>e.branch===fb);
+  const el=document.getElementById('evt-tbl');
+  if(!list.length){el.innerHTML='<div class="empty">No events yet.</div>';return}
+  el.innerHTML=`<table><thead><tr><th>Event</th><th>Date</th><th>Branch</th><th>Attendance</th><th>Outsourced</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  ${list.map(e=>{
+    const att=DB.attendance.filter(a=>a.eventId===e.id);
+    const appr=att.filter(a=>a.status==='approved').length;
+    const ext=DB.outsourced.filter(o=>o.eventId===e.id);
+    const extCost=ext.reduce((s,o)=>s+o.amount,0);
+    return `<tr>
+      <td style="font-weight:500">${e.name}</td><td>${e.date}</td><td>${e.branch}</td>
+      <td>${appr} approved / ${att.length} total</td>
+      <td>${ext.length>0?`${ext.length} staff · ₹${extCost.toLocaleString()}`:'-'}</td>
+      <td><span class="b ${e.status==='open'?'bg':'ba'}">${e.status}</span></td>
+      <td><div style="display:flex;gap:5px">
+        ${e.status==='open'?`<button class="btn bsm btn-b" onclick="closeEvent('${e.id}')">Close</button>`:''}
+        <button class="btn bsm btn-d" onclick="delEvent('${e.id}')">Delete</button>
+      </div></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+function addEvent(){
+  const name=document.getElementById('ne-name').value.trim();
+  const date=document.getElementById('ne-date').value;
+  const branch=document.getElementById('ne-branch').value;
+  if(!name||!date){toast('Name and date required','er');return}
+  DB.events.push({id:'EVT-'+uid(),name,date,branch,status:'open'});
+  save();toast('Event created: '+name);renderEvtTbl();
+  document.getElementById('ne-name').value='';
+}
+function closeEvent(id){DB.events=DB.events.map(e=>e.id===id?{...e,status:'closed'}:e);save();renderEvtTbl();toast('Event closed')}
+function delEvent(id){if(confirm('Delete event?')){DB.events=DB.events.filter(e=>e.id!==id);save();renderEvtTbl();}}
+
+function pgOutsourced(el){
+  const branch=myBranch();
+  const openEvents=DB.events.filter(e=>e.status==='open'&&(!branch||e.branch===branch));
+  el.innerHTML=`
+  <div class="ptitle">Outsourced Staff</div>
+  <div class="psub">Track external staff hired per event. Costs shown separately in salary sheet.</div>
+  <div class="card">
+    <div class="ctitle">Add Outsourced Staff</div>
+    ${openEvents.length===0?'<div class="info-box">No open events. Create an event first.</div>':`
+    <div class="fg3">
+      <div class="frow"><label>Event</label>
+        <select id="oe-event">${openEvents.map(e=>`<option value="${e.id}">${e.name} · ${e.date} · ${e.branch}</option>`).join('')}</select>
+      </div>
+      <div class="frow"><label>Name</label><input type="text" id="oe-name" placeholder="e.g. Ramesh B"></div>
+      <div class="frow"><label>Role</label><select id="oe-role">${ROLES.map(r=>`<option>${r}</option>`).join('')}</select></div>
+    </div>
+    <div class="fg3">
+      <div class="frow"><label>Amount (₹)</label><input type="number" id="oe-amount" placeholder="e.g. 1200"></div>
+      <div class="frow"><label>Phone (optional)</label><input type="text" id="oe-phone" placeholder="9876543210"></div>
+      <div class="frow"><label>Payment Status</label><select id="oe-paid"><option value="false">Unpaid</option><option value="true">Paid</option></select></div>
+    </div>
+    <div class="grow"><button class="btn btn-p" onclick="addOutsourced()">+ Add Outsourced Staff</button></div>`}
+  </div>
+  <div class="card">
+    <div class="frow-bar">
+      <div class="ctitle" style="margin:0;flex:1">Outsourced Log</div>
+      ${!branch?`<select onchange="renderExtTbl()" id="fext-branch"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
+      <select onchange="renderExtTbl()" id="fext-paid"><option value="">All</option><option value="true">Paid</option><option value="false">Unpaid</option></select>
+    </div>
+    <div class="tw" id="ext-tbl"></div>
+  </div>`;
+  renderExtTbl();
+}
+function renderExtTbl(){
+  const fb=document.getElementById('fext-branch')?.value||myBranch()||'';
+  const fp=document.getElementById('fext-paid')?.value||'';
+  let list=[...DB.outsourced].reverse();
+  if(fb)list=list.filter(o=>o.branch===fb);
+  if(fp!=='')list=list.filter(o=>String(o.paid)===fp);
+  const el=document.getElementById('ext-tbl');
+  if(!list.length){el.innerHTML='<div class="empty">No outsourced staff records.</div>';return}
+  const total=list.reduce((s,o)=>s+o.amount,0);
+  el.innerHTML=`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;padding:.75rem 1rem;background:var(--dk3);border-radius:10px">
+    <span style="color:var(--muted);font-size:13px">Total shown</span>
+    <span style="font-family:var(--ff);font-size:18px;font-weight:700;color:var(--gold)">₹${total.toLocaleString()}</span>
+  </div>
+  <table><thead><tr><th>Name</th><th>Role</th><th>Event</th><th>Branch</th><th>Date</th><th>Amount</th><th>Payment</th><th>Actions</th></tr></thead><tbody>
+  ${list.map(o=>{
+    const e=DB.events.find(x=>x.id===o.eventId);
+    return `<tr>
+      <td style="font-weight:500">${o.name} <code style="color:var(--muted);font-size:10px">${o.id}</code></td>
+      <td>${o.role}</td>
+      <td>${e?e.name:'?'}</td>
+      <td>${o.branch}</td>
+      <td>${o.date}</td>
+      <td style="font-weight:600;color:var(--gold)">₹${o.amount.toLocaleString()}</td>
+      <td><button class="btn bsm ${o.paid?'btn-s':'btn-d'}" onclick="togglePaid('${o.id}')">${o.paid?'✓ Paid':'Mark Paid'}</button></td>
+      <td><button class="btn bsm btn-d" onclick="delExt('${o.id}')">Remove</button></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+function addOutsourced(){
+  const eventId=document.getElementById('oe-event').value;
+  const name=document.getElementById('oe-name').value.trim();
+  const role=document.getElementById('oe-role').value;
+  const amount=parseFloat(document.getElementById('oe-amount').value)||0;
+  const phone=document.getElementById('oe-phone').value.trim();
+  const paid=document.getElementById('oe-paid').value==='true';
+  if(!name||!amount){toast('Name and amount required','er');return}
+  const ev=DB.events.find(e=>e.id===eventId);
+  const id='EXT-'+uid().substring(0,5).toUpperCase();
+  DB.outsourced.push({id,eventId,name,role,amount,phone,paid,branch:ev.branch,date:ev.date});
+  save();toast(name+' added as '+id);renderExtTbl();
+  document.getElementById('oe-name').value='';document.getElementById('oe-amount').value='';
+}
+function togglePaid(id){DB.outsourced=DB.outsourced.map(o=>o.id===id?{...o,paid:!o.paid}:o);save();renderExtTbl();toast('Payment status updated')}
+function delExt(id){if(confirm('Remove this record?')){DB.outsourced=DB.outsourced.filter(o=>o.id!==id);save();renderExtTbl();}}
+
+function pgApprovals(el){
+  const branch=myBranch();
+  const pending=DB.attendance.filter(a=>a.status==='pending'&&(!branch||a.branch===branch));
+  const approved=DB.attendance.filter(a=>a.status==='approved'&&(!branch||a.branch===branch));
+  el.innerHTML=`
+  <div class="ptitle">Approvals</div>
+  <div class="psub">Review event staff attendance entries for your branch.</div>
+  <div class="card">
+    <div class="ctitle">Pending (${pending.length})</div>
+    ${pending.length===0?'<div class="empty">✓ All caught up! No pending approvals.</div>':
+    pending.map(a=>{
+      const s=DB.staff.find(x=>x.id===a.staffId);
+      const e=DB.events.find(x=>x.id===a.eventId);
+      return `<div style="padding:14px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          ${a.photo?`<img src="${a.photo}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex-shrink:0">`:`<div class="av av-e" style="width:64px;height:64px;font-size:18px">${s?ini(s.name):'?'}</div>`}
+          <div style="flex:1;min-width:160px">
+            <div style="font-weight:600;font-size:14px">${s?s.name:'Unknown'} <code>${a.staffId}</code></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px">${a.role} · ${e?e.name:'?'} · ${a.date} · ${a.time}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">Branch: ${a.branch}</div>
+            ${a.gps?`<div style="margin-top:6px;display:flex;align-items:center;gap:6px">
+              <span style="font-size:11px;background:var(--green-dim);color:var(--green);padding:2px 8px;border-radius:20px">📍 GPS Verified</span>
+              <a href="https://www.google.com/maps?q=${a.gps.lat},${a.gps.lng}" target="_blank" style="font-size:11px;color:var(--gold);text-decoration:none">${a.gps.lat}, ${a.gps.lng} (±${a.gps.acc}m) →</a>
+            </div>`:`<span style="font-size:11px;background:var(--red-dim);color:var(--red);padding:2px 8px;border-radius:20px;margin-top:6px;display:inline-block">No GPS</span>`}
+            ${!a.photo?`<span style="font-size:11px;background:var(--red-dim);color:var(--red);padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block">No Photo</span>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+            <button class="btn btn-s bsm" onclick="approveAtt('${a.id}')">✓ Approve</button>
+            <button class="btn btn-d bsm" onclick="rejectAtt('${a.id}')">✗ Reject</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+    ${pending.length>1?`<div class="grow"><button class="btn btn-s" onclick="approveAll()">✓ Approve All ${pending.length} entries</button></div>`:''}
+  </div>
+  <div class="card">
+    <div class="ctitle">Approved this month</div>
+    <div class="tw"><table><thead><tr><th>Name</th><th>Event</th><th>Role</th><th>Branch</th><th>Date</th><th>Time</th></tr></thead><tbody>
+    ${approved.filter(a=>mkkey(a.date)===mkkey(today())).map(a=>{
+      const s=DB.staff.find(x=>x.id===a.staffId);
+      const e=DB.events.find(x=>x.id===a.eventId);
+      return `<tr><td>${s?s.name:'?'}</td><td>${e?e.name:'?'}</td><td>${a.role}</td><td>${a.branch}</td><td>${a.date}</td><td>${a.time}</td></tr>`;
+    }).join('')||'<tr><td colspan="6" class="empty">No approved entries this month</td></tr>'}
+    </tbody></table></div>
+  </div>`;
+}
+function approveAtt(id){
+  DB.attendance=DB.attendance.map(a=>a.id===id?{...a,status:'approved'}:a);
+  save();toast('Approved ✓');showPage('approvals');
+  const b=document.getElementById('appr-badge');
+  if(b){const cnt=DB.attendance.filter(a=>a.status==='pending'&&(CU.branch==='ALL'||a.branch===CU.branch)).length;b.textContent=cnt||'';if(!cnt)b.style.display='none';}
+}
+function rejectAtt(id){DB.attendance=DB.attendance.map(a=>a.id===id?{...a,status:'rejected'}:a);save();toast('Rejected','er');showPage('approvals');}
+function approveAll(){
+  const branch=myBranch();
+  DB.attendance=DB.attendance.map(a=>(a.status==='pending'&&(!branch||a.branch===branch))?{...a,status:'approved'}:a);
+  save();toast('All approved ✓');showPage('approvals');
+}
+
+function pgClockLog(el){
+  const branch=myBranch();
+  el.innerHTML=`
+  <div class="ptitle">Regular Staff Clock Log</div>
+  <div class="psub">Daily in/out records. Incomplete entries need admin action.</div>
+  <div class="card">
+    <div class="info-box">⚠ <b>Incomplete entries</b> = staff clocked in but forgot to clock out. Set their clock-out time manually or mark as absent for that day.</div>
+    <div class="frow-bar">
+      ${!branch?`<select onchange="renderClockTbl()" id="fcl-branch"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
+      <input type="month" id="fcl-month" value="${today().substring(0,7)}" onchange="renderClockTbl()" style="width:auto">
+      <select onchange="renderClockTbl()" id="fcl-status"><option value="">All</option><option value="complete">Complete</option><option value="incomplete">Incomplete</option></select>
+    </div>
+    <div class="tw" id="clock-tbl"></div>
+  </div>`;
+  renderClockTbl();
+}
+function renderClockTbl(){
+  const fb=document.getElementById('fcl-branch')?.value||myBranch()||'';
+  const fm=document.getElementById('fcl-month')?.value||today().substring(0,7);
+  const fs=document.getElementById('fcl-status')?.value||'';
+  let list=[...DB.clocklog].filter(c=>c.date.startsWith(fm));
+  if(fb)list=list.filter(c=>c.branch===fb);
+  if(fs)list=list.filter(c=>c.status===fs);
+  list.sort((a,b)=>b.date.localeCompare(a.date));
+  const el=document.getElementById('clock-tbl');
+  if(!list.length){el.innerHTML='<div class="empty">No clock records found.</div>';return}
+  el.innerHTML=`<table><thead><tr><th>Name</th><th>Date</th><th>Branch</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th><th>Action</th></tr></thead><tbody>
+  ${list.map(c=>{
+    const s=DB.staff.find(x=>x.id===c.staffId);
+    let hours='-';
+    if(c.inTime&&c.outTime){
+      const [ih,im]=c.inTime.split(':').map(Number);
+      const [oh,om]=c.outTime.split(':').map(Number);
+      const diff=((oh*60+om)-(ih*60+im))/60;
+      hours=diff.toFixed(1)+'h';
+    }
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-r">${s?ini(s.name):'?'}</div>${s?s.name:'?'}</div></td>
+      <td>${c.date}${isSunday(c.date)?'<span class="b ba" style="margin-left:5px;font-size:10px">Sun</span>':''}</td>
+      <td>${c.branch}</td>
+      <td style="color:var(--green)">${c.inTime||'-'}</td>
+      <td style="color:${c.outTime?'var(--amber)':'var(--red)'}">${c.outTime||'—'}</td>
+      <td>${hours}</td>
+      <td><span class="b ${c.status==='complete'?'bg':c.status==='incomplete'?'ba':'br'}">${c.status}</span></td>
+      <td>${c.status==='incomplete'?`<button class="btn bsm btn-b" onclick="fixClockOut('${c.id}')">Set Out Time</button>`:'—'}</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+function fixClockOut(id){
+  const c=DB.clocklog.find(x=>x.id===id);
+  const s=DB.staff.find(x=>x.id===c.staffId);
+  openModal('Set Clock-Out Time — '+s?.name,`
+    <div class="info-box">${s?.name} clocked in at <b>${c.inTime}</b> on <b>${c.date}</b> but did not clock out.</div>
+    <div class="frow"><label>Set Clock-Out Time</label><input type="time" id="fix-time" value="18:00"></div>
+    <div class="frow"><label>Or mark as</label>
+      <select id="fix-action">
+        <option value="set">Set clock-out time (count as full day)</option>
+        <option value="absent">Mark as absent (don't count this day)</option>
+      </select>
+    </div>
+    <div class="grow">
+      <button class="btn btn-p" onclick="applyClockFix('${id}')">Apply</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+function applyClockFix(id){
+  const action=document.getElementById('fix-action').value;
+  const time=document.getElementById('fix-time').value;
+  if(action==='set'){DB.clocklog=DB.clocklog.map(c=>c.id===id?{...c,outTime:time,status:'complete',adminFixed:true}:c);}
+  else{DB.clocklog=DB.clocklog.map(c=>c.id===id?{...c,status:'absent',adminFixed:true}:c);}
+  save();closeModal();toast('Updated ✓');renderClockTbl();
+}
+
+function pgRates(el){
+  const branch=myBranch();
+  const mk=mkkey(today());
+  const eventStaff=DB.staff.filter(s=>s.active&&s.type==='event'&&(!branch||s.branch===branch));
+  el.innerHTML=`
+  <div class="ptitle">Monthly Rates</div>
+  <div class="psub">Set per-event pay rate for each event staff member. Unchanged = last month's rate carries forward automatically.</div>
+  <div class="info-box">
+    📅 Setting rates for: <b>${mk}</b><br>
+    If you don't change a rate, the previous month's amount is used automatically.
+  </div>
+  ${!branch?`<div class="frow-bar" style="margin-bottom:1rem"><select onchange="renderRatesTbl(this.value)" id="fr-branch"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select></div>`:''}
+  <div id="rates-tbl"></div>
+  <div class="grow"><button class="btn btn-p" onclick="saveRates()">💾 Save All Rates for ${mk}</button></div>`;
+  renderRatesTbl(branch||'');
+}
+function renderRatesTbl(fb){
+  const mk=mkkey(today());
+  const branch=fb||myBranch()||'';
+  let list=DB.staff.filter(s=>s.active&&s.type==='event');
+  if(branch)list=list.filter(s=>s.branch===branch);
+  const el=document.getElementById('rates-tbl');
+  if(!list.length){el.innerHTML='<div class="empty">No event staff found.</div>';return}
+  const byBranch={};
+  list.forEach(s=>{if(!byBranch[s.branch])byBranch[s.branch]=[];byBranch[s.branch].push(s);});
+  el.innerHTML=Object.entries(byBranch).map(([br,staff])=>`
+    <div class="card">
+      <div class="ctitle">${br}</div>
+      ${staff.map(s=>{
+        const current=getEffectiveRate(s.id,mk);
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div class="av av-e">${ini(s.name)}</div>
+          <div style="flex:1"><div style="font-weight:500">${s.name}</div><div style="font-size:12px;color:var(--muted)">${s.role} · <code>${s.id}</code></div></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:var(--muted);font-size:13px">₹</span>
+            <input type="number" id="rate-${s.id}" value="${current}" style="width:90px;text-align:right">
+            <span style="font-size:12px;color:var(--muted)">/event</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+function saveRates(){
+  const mk=mkkey(today());
+  if(!DB.monthRates[mk])DB.monthRates[mk]={};
+  DB.staff.filter(s=>s.active&&s.type==='event').forEach(s=>{
+    const el=document.getElementById('rate-'+s.id);
+    if(el)DB.monthRates[mk][s.id]=parseFloat(el.value)||0;
+  });
+  save();toast('Rates saved for '+mk+' ✓');
+}
+
+function pgSalary(el){
+  const branch=myBranch();
+  const months=[...new Set([...DB.attendance.map(a=>mkkey(a.date)),...DB.clocklog.map(c=>mkkey(c.date))])];
+  if(!months.includes(mkkey(today())))months.unshift(mkkey(today()));
+  el.innerHTML=`
+  <div class="ptitle">Salary Sheet</div>
+  <div class="psub">Auto-calculated monthly payroll — Regular staff, Event staff, and Outsourced costs.</div>
+  <div class="frow-bar">
+    <select id="ss-month" onchange="renderSalSheet()">${months.map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+    ${!branch?`<select id="ss-branch" onchange="renderSalSheet()"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
+    <button class="btn btn-p bsm" onclick="window.print()">🖨 Print / Export</button>
+  </div>
+  <div id="sal-wrap"></div>`;
+  renderSalSheet();
+}
+function renderSalSheet(){
+  const mk=document.getElementById('ss-month').value;
+  const fb=document.getElementById('ss-branch')?.value||myBranch()||'';
+  const [monthName,year]=mk.split(' ');
+  const monthIdx=new Date(mk+' 1').getMonth();
+  const yearNum=parseInt(year);
+  const workingDays=getWorkingDays(yearNum,monthIdx);
+  const sundays=getSundaysInMonth(yearNum,monthIdx);
+  const totalDays=new Date(yearNum,monthIdx+1,0).getDate();
+  const monthAtt=DB.attendance.filter(a=>mkkey(a.date)===mk&&a.status==='approved');
+  let staffList=DB.staff.filter(s=>s.active);
+  if(fb)staffList=staffList.filter(s=>s.branch===fb);
+  let regTotal=0,evtTotal=0,extTotal=0;
+  const regRows=staffList.filter(s=>s.type==='regular').map(s=>{
+    const daysWorked=DB.clocklog.filter(c=>c.staffId===s.id&&mkkey(c.date)===mk&&c.status==='complete').length;
+    const dailyRate=(s.salary||0)/workingDays;
+    const extraAbsent=Math.max(0,workingDays-4-daysWorked);
+    const deduction=Math.round(extraAbsent*dailyRate);
+    const pay=(s.salary||0)-deduction;
+    regTotal+=pay;
+    return {s,daysWorked,workingDays,extraAbsent,deduction,pay};
+  });
+  const evtRows=staffList.filter(s=>s.type==='event').map(s=>{
+    const rate=getEffectiveRate(s.id,mk);
+    const att=monthAtt.filter(a=>a.staffId===s.id);
+    const pay=att.length*rate;
+    evtTotal+=pay;
+    return {s,rate,events:att.length,eventNames:[...new Set(att.map(a=>{const e=DB.events.find(x=>x.id===a.eventId);return e?e.name:'?'}))],pay};
+  });
+  const extRows=DB.outsourced.filter(o=>mkkey(o.date)===mk&&(!fb||o.branch===fb));
+  extTotal=extRows.reduce((s,o)=>s+o.amount,0);
+  const grand=regTotal+evtTotal+extTotal;
+  const locked=DB.salaryLock[mk+fb];
+  const el=document.getElementById('sal-wrap');
+  el.innerHTML=`
+  <div class="sal-hero">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
+      <div>
+        <div class="sal-total">₹${grand.toLocaleString()}</div>
+        <div class="sal-lbl">Grand total payout — ${mk}${fb?' · '+fb:' · All Branches'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Working days: ${workingDays} (${totalDays} days − ${sundays} Sundays) · 4 paid offs included</div>
+      </div>
+      ${locked?'<span class="b bg">🔒 Finalized</span>':''}
+    </div>
+    <div class="sal-breakdown">
+      <div class="sbd"><div class="sbd-v" style="color:var(--green)">₹${regTotal.toLocaleString()}</div><div class="sbd-l">Regular Staff</div></div>
+      <div class="sbd"><div class="sbd-v" style="color:var(--blue)">₹${evtTotal.toLocaleString()}</div><div class="sbd-l">Event Staff</div></div>
+      <div class="sbd"><div class="sbd-v" style="color:var(--amber)">₹${extTotal.toLocaleString()}</div><div class="sbd-l">Outsourced</div></div>
+    </div>
+  </div>
+
+  <div class="ssep">Regular Staff — Fixed Monthly Salary</div>
+  <div class="card">
+    <table><thead><tr><th>Name</th><th>Branch</th><th>Monthly Salary</th><th>Working Days</th><th>Days Worked</th><th>Extra Absent</th><th>Deduction</th><th>Final Pay</th></tr></thead>
+    <tbody>${regRows.map(({s,daysWorked,workingDays,extraAbsent,deduction,pay})=>`<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-r">${ini(s.name)}</div>${s.name}</div></td>
+      <td>${s.branch}</td>
+      <td>₹${(s.salary||0).toLocaleString()}</td>
+      <td>${workingDays} <span style="font-size:11px;color:var(--muted)">(incl. 4 offs)</span></td>
+      <td>${daysWorked}</td>
+      <td style="color:${extraAbsent>0?'var(--red)':'var(--muted)'}">${extraAbsent>0?extraAbsent+' days':'—'}</td>
+      <td style="color:${deduction>0?'var(--red)':'var(--muted)'}">${deduction>0?'−₹'+deduction.toLocaleString():'—'}</td>
+      <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
+    </tr>`).join('')||'<tr><td colspan="8" class="empty">No regular staff in this selection.</td></tr>'}
+    </tbody></table>
+  </div>
+
+  <div class="ssep">Event Staff — Per Event Rate</div>
+  <div class="card">
+    <table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>Rate / Event</th><th>Events</th><th>Event Names</th><th>Total Pay</th></tr></thead>
+    <tbody>${evtRows.map(({s,rate,events,eventNames,pay})=>`<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-e">${ini(s.name)}</div>${s.name}</div></td>
+      <td>${s.branch}</td><td>${s.role}</td>
+      <td>₹${rate.toLocaleString()}</td>
+      <td style="font-weight:600">${events}</td>
+      <td style="font-size:12px;color:var(--muted)">${eventNames.join(', ')||'—'}</td>
+      <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
+    </tr>`).join('')||'<tr><td colspan="7" class="empty">No event staff records.</td></tr>'}
+    </tbody></table>
+  </div>
+
+  <div class="ssep">Outsourced Staff — External Cost</div>
+  <div class="card">
+    <table><thead><tr><th>Name</th><th>Role</th><th>Event</th><th>Branch</th><th>Amount</th><th>Payment</th></tr></thead>
+    <tbody>${extRows.map(o=>{const e=DB.events.find(x=>x.id===o.eventId);return`<tr>
+      <td style="font-weight:500">${o.name} <code style="color:var(--muted)">${o.id}</code></td>
+      <td>${o.role}</td><td>${e?e.name:'?'}</td><td>${o.branch}</td>
+      <td style="font-weight:600;color:var(--amber)">₹${o.amount.toLocaleString()}</td>
+      <td><span class="b ${o.paid?'bg':'br'}">${o.paid?'Paid':'Unpaid'}</span></td>
+    </tr>`;}).join('')||'<tr><td colspan="6" class="empty">No outsourced staff this month.</td></tr>'}
+    <tr style="border-top:2px solid var(--border2)">
+      <td colspan="4" style="font-weight:600;text-align:right;color:var(--muted)">Outsourced Total</td>
+      <td style="font-weight:700;color:var(--amber)">₹${extTotal.toLocaleString()}</td><td></td>
+    </tr>
+    </tbody></table>
+  </div>
+  ${!locked?`<div class="grow"><button class="btn btn-p" onclick="lockSalary('${mk}','${fb}')">🔒 Finalize & Lock Salary — ${mk}</button><span style="font-size:12px;color:var(--muted)">No edits possible after lock</span></div>`:'<div class="grow"><span class="b bg">🔒 This month is finalized and locked</span></div>'}`;
+}
+function lockSalary(mk,fb){
+  if(confirm('Finalize salary for '+mk+'? No changes can be made after this.')){
+    DB.salaryLock[mk+fb]=true;save();toast('Salary finalized & locked ✓');renderSalSheet();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// REGULAR STAFF PAGES
+// ═══════════════════════════════════════════════════════
+function pgClockIn(el){
+  const s=CU;
+  const d=today();
+  const existing=DB.clocklog.find(c=>c.staffId===s.id&&c.date===d);
+  const now=nowtime();
+  const isSun=isSunday(d);
+  el.innerHTML=`<div class="clock-card">
+    <div style="font-family:var(--ff);font-size:13px;font-weight:600;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:.25rem">Today</div>
+    <div class="clock-time" id="live-time">${now}</div>
+    <div class="clock-date">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+    ${isSun?'<div style="background:var(--amber-dim);border:1px solid rgba(243,156,18,.3);border-radius:12px;padding:.75rem;text-align:center;color:var(--amber);margin-bottom:1rem;font-size:13px">☀ Today is Sunday — Holiday</div>':''}
+    ${existing?
+      existing.status==='complete'?
+      `<div class="clock-status cs-done">
+        <div style="font-size:18px;margin-bottom:4px">✓</div>
+        <div style="font-weight:600">Completed for today</div>
+        <div style="font-size:12px;margin-top:4px">In: ${existing.inTime} &nbsp;·&nbsp; Out: ${existing.outTime}</div>
+      </div>`:
+      existing.status==='incomplete'?
+      `<div class="clock-status cs-incomplete">
+        <div style="font-weight:600">⚠ Clock-out missing</div>
+        <div style="font-size:12px;margin-top:4px">Clocked in at ${existing.inTime} — contact your admin to fix</div>
+      </div>
+      <button class="big-btn bb-out" onclick="doClock('out','${existing.id}')">Clock Out Now</button>`:
+      `<div class="clock-status cs-out"><div style="font-weight:500">Not clocked in yet</div></div>
+      ${!isSun?`<button class="big-btn bb-in" onclick="doClock('in')">Clock In</button>`:''}`:
+      `<div class="clock-status cs-out"><div style="font-weight:500">Ready to clock in</div></div>
+      ${!isSun?`<button class="big-btn bb-in" onclick="doClock('in')">Clock In</button>`:'<div style="color:var(--muted);font-size:13px">Enjoy your Sunday!</div>'}`
+    }
+    <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span style="color:var(--muted)">This month days worked</span>
+        <span style="font-weight:600">${DB.clocklog.filter(c=>c.staffId===s.id&&c.status==='complete'&&mkkey(c.date)===mkkey(d)).length} days</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px">
+        <span style="color:var(--muted)">Offs used this month</span>
+        <span style="font-weight:600">${Math.max(0,getWorkingDays(new Date().getFullYear(),new Date().getMonth())-DB.clocklog.filter(c=>c.staffId===s.id&&c.status==='complete'&&mkkey(c.date)===mkkey(d)).length)} / 4</span>
+      </div>
+    </div>
+  </div>`;
+  setInterval(()=>{const t=document.getElementById('live-time');if(t)t.textContent=nowtime();},30000);
+}
+function doClock(type,existingId){
+  const s=CU;const d=today();const t=nowtime();
+  if(type==='in'){
+    const id='CLK-'+uid();
+    DB.clocklog.push({id,staffId:s.id,date:d,inTime:t,outTime:'',status:'incomplete',branch:s.branch});
+    save();toast('Clocked in at '+t+' ✓');showPage('clockin');
+  } else {
+    DB.clocklog=DB.clocklog.map(c=>c.id===existingId?{...c,outTime:t,status:'complete'}:c);
+    save();toast('Clocked out at '+t+' ✓');showPage('clockin');
+  }
+}
+
+function pgMyAtt(el){
+  const s=CU;
+  const mk=mkkey(today());
+  const myLogs=DB.clocklog.filter(c=>c.staffId===s.id&&mkkey(c.date)===mk);
+  const complete=myLogs.filter(c=>c.status==='complete').length;
+  const incomplete=myLogs.filter(c=>c.status==='incomplete').length;
+  const wd=getWorkingDays(new Date().getFullYear(),new Date().getMonth());
+  const offs=Math.max(0,wd-complete);
+  el.innerHTML=`
+  <div class="ptitle">My Attendance</div>
+  <div class="psub">${mk}</div>
+  <div class="sgrid">
+    <div class="stat"><div class="sv" style="color:var(--green)">${complete}</div><div class="sl">Days Present</div></div>
+    <div class="stat"><div class="sv" style="color:${offs>4?'var(--red)':'var(--muted)'}"> ${offs}</div><div class="sl">Offs Used (4 allowed)</div></div>
+    <div class="stat"><div class="sv">${wd}</div><div class="sl">Working Days</div></div>
+    <div class="stat"><div class="sv" style="color:${incomplete>0?'var(--amber)':'var(--muted)'}"> ${incomplete}</div><div class="sl">Incomplete Entries</div></div>
+  </div>
+  <div class="card">
+    <div class="ctitle">Daily Log — ${mk}</div>
+    <div class="tw"><table><thead><tr><th>Date</th><th>Day</th><th>Clock In</th><th>Clock Out</th><th>Hours</th><th>Status</th></tr></thead>
+    <tbody>${myLogs.sort((a,b)=>b.date.localeCompare(a.date)).map(c=>{
+      const day=new Date(c.date).toLocaleDateString('en-IN',{weekday:'short'});
+      let hrs='-';
+      if(c.inTime&&c.outTime){const[ih,im]=c.inTime.split(':').map(Number);const[oh,om]=c.outTime.split(':').map(Number);hrs=((oh*60+om-ih*60-im)/60).toFixed(1)+'h';}
+      return `<tr>
+        <td>${c.date}</td><td>${day}</td>
+        <td style="color:var(--green)">${c.inTime||'-'}</td>
+        <td style="color:var(--amber)">${c.outTime||'—'}</td>
+        <td>${hrs}</td>
+        <td><span class="b ${c.status==='complete'?'bg':c.status==='incomplete'?'ba':'br'}">${c.status}</span></td>
+      </tr>`;
+    }).join('')||'<tr><td colspan="6" class="empty">No records this month</td></tr>'}
+    </tbody></table></div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// EVENT STAFF PAGES
+// ═══════════════════════════════════════════════════════
+function pgMark(el){
+  const s=CU;
+  const d=today();
+  const todayEvents=DB.events.filter(e=>e.date===d&&e.branch===s.branch&&e.status==='open');
+  const alreadyMarked=DB.attendance.find(a=>a.staffId===s.id&&a.date===d);
+  el.innerHTML=`<div class="mark-card">
+    <div class="mu">
+      <div class="av av-e" style="width:44px;height:44px;font-size:15px">${ini(s.name)}</div>
+      <div class="mu-info">
+        <div class="name">${s.name}</div>
+        <div class="role">${s.role} · ${s.branch}</div>
+        <div class="sid">${s.id}</div>
+      </div>
+    </div>
+    ${alreadyMarked?`<div style="background:var(--green-dim);border:1px solid rgba(39,174,96,.3);border-radius:12px;padding:1rem;text-align:center;margin-bottom:1rem">
+      <div style="font-size:22px;margin-bottom:4px">✓</div>
+      <div style="font-weight:600;color:var(--green)">Attendance already marked today</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Status: <span class="b ${alreadyMarked.status==='approved'?'bg':'ba'}">${alreadyMarked.status}</span></div>
+    </div>`:''}
+    <div class="frow"><label>Select Event</label>
+      <select id="mk-event">
+        <option value="">— select today's event —</option>
+        ${todayEvents.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
+        ${todayEvents.length===0?'<option disabled>No open events today in your branch</option>':''}
+      </select>
+    </div>
+    <div class="frow"><label>Your Role Today</label>
+      <select id="mk-role">${ROLES.map(r=>`<option ${r===s.role?'selected':''}>${r}</option>`).join('')}</select>
+    </div>
+    <div class="frow"><label>Check-in Time</label><input type="time" id="mk-time" value="${nowtime()}"></div>
+    <button class="mark-btn" onclick="submitMark()">✦ Mark Present</button>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:10px">Entry will be reviewed by your branch admin</div>
+  </div>`;
+}
+function submitMark(){
+  const eventId=document.getElementById('mk-event').value;
+  const role=document.getElementById('mk-role').value;
+  const time=document.getElementById('mk-time').value;
+  if(!eventId){toast('Please select an event','er');return}
+  DB.attendance.push({id:'ATT-'+uid(),staffId:CU.id,eventId,date:today(),time,role,status:'pending',branch:CU.branch});
+  save();toast('Attendance submitted! Pending approval.');showPage('markpresent');
+}
+
+function pgMyRecords(el){
+  const mk=mkkey(today());
+  const myAtt=DB.attendance.filter(a=>a.staffId===CU.id).reverse();
+  const thisMonth=myAtt.filter(a=>mkkey(a.date)===mk);
+  el.innerHTML=`
+  <div class="ptitle">My Records</div>
+  <div class="psub">Your attendance history.</div>
+  <div class="sgrid">
+    <div class="stat"><div class="sv" style="color:var(--green)">${thisMonth.filter(a=>a.status==='approved').length}</div><div class="sl">Approved This Month</div></div>
+    <div class="stat"><div class="sv" style="color:var(--amber)">${thisMonth.filter(a=>a.status==='pending').length}</div><div class="sl">Pending</div></div>
+    <div class="stat"><div class="sv">${myAtt.length}</div><div class="sl">Total All Time</div></div>
+  </div>
+  <div class="card">
+    <div class="ctitle">All Attendance Records</div>
+    <div class="tw"><table><thead><tr><th>Event</th><th>Date</th><th>Role</th><th>Time</th><th>Selfie</th><th>GPS</th><th>Status</th></tr></thead>
+    <tbody>${myAtt.map(a=>{
+      const e=DB.events.find(x=>x.id===a.eventId);
+      return `<tr>
+        <td style="font-weight:500">${e?e.name:'?'}</td>
+        <td>${a.date}</td><td>${a.role}</td><td>${a.time}</td>
+        <td>${a.photo?`<img src="${a.photo}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--gold)">`:'—'}</td>
+        <td>${a.gps?`<a href="https://www.google.com/maps?q=${a.gps.lat},${a.gps.lng}" target="_blank" style="color:var(--gold);font-size:11px">📍 View</a>`:'—'}</td>
+        <td><span class="b ${a.status==='approved'?'bg':a.status==='rejected'?'br':'ba'}">${a.status}</span></td>
+      </tr>`;
+    }).join('')||'<tr><td colspan="5" class="empty">No records yet</td></tr>'}
+    </tbody></table></div>
+  </div>`;
+}
+
+function pgMyPay(el){
+  const s=CU;
+  const mk=mkkey(today());
+  const rate=getEffectiveRate(s.id,mk);
+  const approved=DB.attendance.filter(a=>a.staffId===s.id&&a.status==='approved'&&mkkey(a.date)===mk);
+  const pending=DB.attendance.filter(a=>a.staffId===s.id&&a.status==='pending'&&mkkey(a.date)===mk);
+  const pay=approved.length*rate;
+  el.innerHTML=`
+  <div style="max-width:420px">
+  <div class="ptitle">My Pay</div>
+  <div class="psub">${mk}</div>
+  <div class="sal-hero">
+    <div class="sal-total">₹${pay.toLocaleString()}</div>
+    <div class="sal-lbl">Estimated pay — ${approved.length} events × ₹${rate.toLocaleString()}</div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Staff ID</span><code>${s.id}</code></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Role</span><span>${s.role}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Branch</span><span>${s.branch}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Rate this month</span><span style="font-weight:600">₹${rate.toLocaleString()} / event</span></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Approved events</span><span style="font-weight:600;color:var(--green)">${approved.length}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 0"><span style="color:var(--muted)">Pending approval</span><span style="color:var(--amber)">${pending.length} entries</span></div>
+  </div>
+  <div style="font-size:11px;color:var(--muted);text-align:center">Final amount confirmed after admin approves all entries</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════════════
+function openModal(title,body){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=body;
+  document.getElementById('modal-bg').classList.remove('hidden');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modal-bg'))
+    document.getElementById('modal-bg').classList.add('hidden');
+}
+
+
+// ─── REPORTS PAGE ────────────────────────────────────────────
+function pgReports(el) {
+  const months=[...new Set([...DB.attendance.map(a=>mkkey(a.date)),...DB.clocklog.map(c=>mkkey(c.date))])];
+  if(!months.includes(mkkey(today())))months.unshift(mkkey(today()));
+  const br=myBranch()||'';
+  el.innerHTML=`
+  <div class="ptitle">Excel Reports</div>
+  <div class="psub">Download .xlsx reports — opens in Excel, Google Sheets, or any spreadsheet app.</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
+    <select id="rpt-mo">${months.map(m=>`<option>${m}</option>`).join('')}</select>
+    ${!br?`<select id="rpt-br"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:1rem">
+    ${[
+      {t:'Daily Report',icon:'📅',sub:'Clock log + event attendance today',type:'daily'},
+      {t:'Monthly Salary',icon:'📆',sub:'Full salary sheet — regular, event, outsourced',type:'monthly'},
+      {t:'Event-wise',icon:'🎪',sub:'Who attended each event with GPS status',type:'events'},
+      {t:'Staff Master',icon:'👥',sub:'All staff, roles, branches, rates',type:'staff'},
+    ].map(r=>`<div onclick="doExport('${r.type}')" style="background:var(--dk3);border:1px solid var(--border2);border-radius:12px;padding:1rem;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)'">
+      <div style="font-size:24px;margin-bottom:8px">${r.icon}</div>
+      <div style="font-family:var(--ff);font-size:14px;font-weight:600;margin-bottom:3px">${r.t}</div>
+      <div style="font-size:12px;color:var(--muted)">${r.sub}</div>
+    </div>`).join('')}
+  </div>
+  <div class="info-box">📌 Photos in attendance show as YES/NO in Excel. GPS coordinates are clickable links. All amounts in Indian Rupees (₹).</div>
+  ${gdSheetId?`<div class="grow"><button class="btn btn-b" onclick="openGSheet()">📋 Open Live Google Sheet →</button><button class="btn btn-gd" onclick="gdSync()">↻ Sync to Drive Now</button></div>`:''}`;
+}
+function doExport(type){
+  const mo=document.getElementById('rpt-mo')?.value||mkkey(today());
+  const br=document.getElementById('rpt-br')?.value||myBranch()||'';
+  exportExcel(type,mo,br);
+}
+
+// ─── GOOGLE DRIVE PAGE ────────────────────────────────────────
+function pgGDrivePage(el) {
+  const lastSync=localStorage.getItem('rz_last_sync')||'Never';
+  el.innerHTML=`
+  <div class="ptitle">Google Drive</div>
+  <div class="psub">Auto-sync all data to your Google Drive spreadsheet.</div>
+  <div style="background:linear-gradient(135deg,rgba(52,168,83,.12),rgba(66,133,244,.08));border:1px solid rgba(52,168,83,.25);border-radius:15px;padding:1.25rem;margin-bottom:1rem">
+    <div style="font-family:var(--ff);font-size:15px;font-weight:700;margin-bottom:.5rem">☁ Google Drive Integration</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.7">
+      When connected, every change syncs automatically to a Google Sheet named <b>"${SHEET_NAME}"</b> in your Drive. Open it anytime, share it, or download as Excel from Google Drive.
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:.75rem">
+      <div>
+        <div style="font-size:13px;font-weight:500">Status: <span style="color:${gdToken?'var(--green)':'var(--red)'}">${gdToken?'Connected ✓':'Not connected'}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Last sync: ${lastSync}</div>
+      </div>
+      ${gdToken?`<button class="btn" style="background:rgba(52,168,83,.15);color:#34A853;border-color:rgba(52,168,83,.3)" onclick="gdSync()">↻ Sync Now</button>
+        <button class="btn btn-b" onclick="openGSheet()">Open Sheet →</button>`:
+        `<button class="btn" style="background:rgba(52,168,83,.15);color:#34A853;border-color:rgba(52,168,83,.3)" onclick="connectGDrive()">Connect Google Drive</button>`}
+    </div>
+    ${!gdToken?`<div class="info-box">
+      <b>Steps to connect:</b><br>
+      1. Go to <a href="https://console.cloud.google.com" target="_blank" style="color:var(--gold)">console.cloud.google.com</a><br>
+      2. New project → Enable <b>Google Drive API</b> + <b>Google Sheets API</b><br>
+      3. Credentials → OAuth 2.0 Client ID → Web Application<br>
+      4. Add your site URL as Authorised JavaScript Origin<br>
+      5. Copy Client ID → open this HTML file → paste at <code>GD_CLIENT_ID</code> top of script<br><br>
+      <b>Until connected:</b> data saves locally in browser. Export Excel anytime from Reports page.
+    </div>`:''}
+  </div>
+  <div class="card">
+    <div class="ctitle">Backup & Restore</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:1rem">Download a full JSON backup of all system data. Store it safely — you can restore everything from it anytime.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="backupJSON()">⬇ Download Full Backup</button>
+      <button class="btn" onclick="document.getElementById('ri').click()">⬆ Restore from Backup</button>
+      <input type="file" id="ri" accept=".json" style="display:none" onchange="restoreJSON(this)">
+    </div>
+  </div>`;
+}
+
+</script>
+</body>
+</html>
