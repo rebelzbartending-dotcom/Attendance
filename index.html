@@ -263,15 +263,28 @@ async function sbUpsert(table, data){
 
 // Upload photo to Supabase Storage
 async function uploadPhoto(file, filename){
-  const r = await fetch(`${SB_URL}/storage/v1/object/selfies/${filename}`, {
-    method:'POST',
-    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg'},
-    body:file
-  });
-  if(r.ok){
-    return `${SB_URL}/storage/v1/object/public/selfies/${filename}`;
+  try {
+    const r = await fetch(`${SB_URL}/storage/v1/object/selfies/${filename}`, {
+      method:'POST',
+      headers:{
+        'apikey':SB_KEY,
+        'Authorization':'Bearer '+SB_KEY,
+        'Content-Type':'image/jpeg',
+        'x-upsert':'true'
+      },
+      body:file
+    });
+    if(r.ok){
+      return `${SB_URL}/storage/v1/object/public/selfies/${filename}`;
+    } else {
+      const errText = await r.text();
+      console.error('Photo upload failed:', r.status, errText);
+      return null;
+    }
+  } catch(e) {
+    console.error('Photo upload error:', e);
+    return null;
   }
-  return null;
 }
 
 // ═══════════════════════════════════════════════════
@@ -898,7 +911,7 @@ async function loadClockTable(){
     const name = staffMap[c.staff_id]||c.staff_id;
     const day = new Date(c.date).toLocaleDateString('en-IN',{weekday:'short'});
     let hrs='—';
-    if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);hrs=((oh*60+om-ih*60-im)/60).toFixed(1)+'h';}
+    if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);let mins=(oh*60+om)-(ih*60+im);if(mins<0)mins+=1440;hrs=(mins/60).toFixed(1)+'h';}
     return `<tr>
       <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-r">${ini(name)}</div>${name}</div></td>
       <td>${c.date} <span style="color:var(--muted);font-size:11px">${day}</span>${isSunday(c.date)?'<span class="b ba" style="margin-left:4px;font-size:10px">SUN</span>':''}</td>
@@ -1254,17 +1267,23 @@ async function pgMyAtt(el){
   const logList = Array.isArray(logs)?logs:[];
   const dw = logList.filter(c=>c.status==='complete').length;
   const wd = getWorkDays(new Date().getFullYear(),new Date().getMonth());
+  // Total hours worked this month
+  let totalMins = 0;
+  logList.filter(c=>c.status==='complete').forEach(c=>{
+    if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);let m=(oh*60+om)-(ih*60+im);if(m<0)m+=1440;totalMins+=m;}
+  });
+  const totalHrs = (totalMins/60).toFixed(1);
   el.innerHTML = `<div class="ptitle">My Attendance</div><div class="psub">${mk}</div>
   <div class="sgrid">
     <div class="stat"><div class="sv" style="color:var(--green)">${dw}</div><div class="sl">Days Present</div></div>
+    <div class="stat"><div class="sv" style="color:var(--gold)">${totalHrs}h</div><div class="sl">Total Hours Worked</div></div>
     <div class="stat"><div class="sv" style="color:${Math.max(0,wd-dw)>4?'var(--red)':'var(--muted)'}">${Math.max(0,wd-dw)}</div><div class="sl">Offs Used (4 allowed)</div></div>
-    <div class="stat"><div class="sv">${wd}</div><div class="sl">Working Days</div></div>
     <div class="stat"><div class="sv" style="color:var(--amber)">${logList.filter(c=>c.status==='incomplete').length}</div><div class="sl">Incomplete</div></div>
   </div>
   <div class="card"><div class="ctitle">Daily Log</div><div class="tw"><table><thead><tr><th>Date</th><th>Day</th><th>In</th><th>Out</th><th>Hours</th><th>Status</th></tr></thead>
   <tbody>${logList.sort((a,b)=>b.date.localeCompare(a.date)).map(c=>{
     const day=new Date(c.date).toLocaleDateString('en-IN',{weekday:'short'});
-    let hrs='—';if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);hrs=((oh*60+om-ih*60-im)/60).toFixed(1)+'h';}
+    let hrs='—';if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);let mins=(oh*60+om)-(ih*60+im);if(mins<0)mins+=1440;hrs=(mins/60).toFixed(1)+'h';}
     return `<tr><td>${c.date}</td><td>${day}</td><td style="color:var(--green)">${c.in_time||'—'}</td><td style="color:var(--amber)">${c.out_time||'—'}</td><td>${hrs}</td><td><span class="b ${c.status==='complete'?'bg':c.status==='incomplete'?'ba':'br'}">${c.status}</span></td></tr>`;
   }).join('')||'<tr><td colspan="6" class="empty">No records</td></tr>'}</tbody></table></div></div>`;
 }
@@ -1300,9 +1319,6 @@ async function pgMark(el){
         ${todayEvents.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
         ${!todayEvents.length?'<option disabled>No open events today in your branch</option>':''}
       </select>
-    </div>
-    <div class="frow"><label>Your Role Today</label>
-      <select id="mk-role">${ROLES.map(r=>`<option ${r===s.role?'selected':''}>${r}</option>`).join('')}</select>
     </div>
     <div class="frow"><label>Check-in Time</label><input type="time" id="mk-time" value="${nowtime()}"></div>
     <!-- SELFIE + GPS -->
@@ -1380,19 +1396,22 @@ function getGPS(){
 
 async function submitMark(){
   const ev=document.getElementById('mk-ev').value;
-  const role=document.getElementById('mk-role').value;
+  const role=CU.role;
   const time=document.getElementById('mk-time').value;
   if(!ev){toast('Select an event','er');return}
   if(!window._photo){toast('Take your selfie first','er');return}
   if(!window._gps){toast('Capture your GPS location','er');return}
-  toast('Submitting...','info');
+  if(!window._photoBlob){toast('Selfie photo is required','er');return}
+  toast('Uploading selfie...','info',5000);
   stopCam();
-  // Upload selfie to Supabase Storage
-  let photoUrl = null;
-  if(window._photoBlob){
-    const filename = `${CU.id}_${today()}_${uid()}.jpg`;
-    photoUrl = await uploadPhoto(window._photoBlob, filename);
+  // Upload selfie to Supabase Storage - REQUIRED
+  const filename = `${CU.id}_${today()}_${uid()}.jpg`;
+  const photoUrl = await uploadPhoto(window._photoBlob, filename);
+  if(!photoUrl){
+    toast('Photo upload failed. Check internet & try again.','er',5000);
+    return;
   }
+  toast('Saving attendance...','info');
   const res = await sbPost('attendance',{
     id:'ATT-'+uid(),
     staff_id:CU.id,
