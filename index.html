@@ -1038,10 +1038,12 @@ async function loadSalary(){
   if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r.rate);
   const locked = Array.isArray(lockData)&&lockData.length>0;
   // Get attendance + clocklog for this month
+  const ld = String(td).padStart(2,'0');
+  const m2 = String(mi+1).padStart(2,'0');
   const [attData, clockData, extData] = await Promise.all([
-    sbGet('attendance',`status=eq.approved&date=gte.${yi}-${String(mi+1).padStart(2,'0')}-01&date=lte.${yi}-${String(mi+1).padStart(2,'0')}-31${fb?`&branch=eq.${fb}`:''}&select=*`),
-    sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${String(mi+1).padStart(2,'0')}-01&date=lte.${yi}-${String(mi+1).padStart(2,'0')}-31${fb?`&branch=eq.${fb}`:''}&select=*`),
-    sbGet('outsourced',`date=gte.${yi}-${String(mi+1).padStart(2,'0')}-01&date=lte.${yi}-${String(mi+1).padStart(2,'0')}-31${fb?`&branch=eq.${fb}`:''}&select=*`)
+    sbGet('attendance',`status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${fb?`&branch=eq.${fb}`:''}&select=*`),
+    sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${fb?`&branch=eq.${fb}`:''}&select=*`),
+    sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${fb?`&branch=eq.${fb}`:''}&select=*`)
   ]);
   const att = Array.isArray(attData)?attData:[];
   const clocks = Array.isArray(clockData)?clockData:[];
