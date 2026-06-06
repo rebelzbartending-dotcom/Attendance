@@ -297,6 +297,8 @@ function mkkey(d){const dt=new Date(d);return dt.toLocaleString('default',{month
 function isSunday(d){return new Date(d).getDay()===0}
 function getSundays(y,m){let c=0,d=new Date(y,m,1);while(d.getMonth()===m){if(d.getDay()===0)c++;d.setDate(d.getDate()+1);}return c}
 function getWorkDays(y,m){return new Date(y,m+1,0).getDate()-getSundays(y,m)}
+// Returns the last calendar day (e.g. "30","31","28") for a given YYYY-MM string
+function monthEnd(ym){const[y,m]=ym.split('-').map(Number);return String(new Date(y,m,0).getDate()).padStart(2,'0');}
 function myBranch(){return CU?.branch==='ALL'?null:CU?.branch}
 function toast(m,t='ok',dur=3000){const el=document.getElementById('toast');el.className='toast show '+t;el.innerHTML=(t==='ok'?'✓ ':t==='info'?'↻ ':'✗ ')+m;setTimeout(()=>el.className='toast',dur)}
 function openModal(t,b){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').innerHTML=b;document.getElementById('modal-bg').classList.remove('hidden')}
@@ -896,7 +898,7 @@ async function loadClockTable(){
   const fb = document.getElementById('fcl-br')?.value||myBranch()||'';
   const fm = document.getElementById('fcl-mo')?.value||today().substring(0,7);
   const fs = document.getElementById('fcl-st')?.value||'';
-  let q = `date=gte.${fm}-01&date=lte.${fm}-31&select=*`;
+  let q = `date=gte.${fm}-01&date=lte.${fm}-${monthEnd(fm)}&select=*`;
   if(fb) q+=`&branch=eq.${fb}`;
   if(fs) q+=`&status=eq.${fs}`;
   const data = await sbGet('clocklog',q);
@@ -1166,7 +1168,7 @@ async function doExportReport(type){
       sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`)
-    ]);    
+    ]);
     const staff=Array.isArray(staffData)?staffData:[];
     const att=Array.isArray(attData)?attData:[];
     const clocks=Array.isArray(clockData)?clockData:[];
@@ -1230,7 +1232,8 @@ async function pgClockIn(el){
   const ex = Array.isArray(existing)&&existing[0];
   const sun = isSunday(d);
   const mk = mkkey(d);
-  const dw = await sbGet('clocklog',`staff_id=eq.${s.id}&status=eq.complete&date=gte.${d.substring(0,7)}-01&date=lte.${d.substring(0,7)}-${lastDay}&select=id`);
+  const ym = d.substring(0,7);
+  const dw = await sbGet('clocklog',`staff_id=eq.${s.id}&status=eq.complete&date=gte.${ym}-01&date=lte.${ym}-${monthEnd(ym)}&select=id`);
   const dwCount = Array.isArray(dw)?dw.length:0;
   el.innerHTML = `<div class="clock-card">
     <div style="font-family:var(--ff);font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Today</div>
@@ -1266,7 +1269,8 @@ async function pgMyAtt(el){
   loading(el);
   const mk = mkkey(today());
   const d = today();
-  const logs = await sbGet('clocklog',`staff_id=eq.${CU.id}&date=gte.${d.substring(0,7)}-01&date=lte.${d.substring(0,7)}-${lastDay}&select=*`);
+  const ym = d.substring(0,7);
+  const logs = await sbGet('clocklog',`staff_id=eq.${CU.id}&date=gte.${ym}-01&date=lte.${ym}-${monthEnd(ym)}&select=*`);
   const logList = Array.isArray(logs)?logs:[];
   const dw = logList.filter(c=>c.status==='complete').length;
   const wd = getWorkDays(new Date().getFullYear(),new Date().getMonth());
@@ -1460,11 +1464,13 @@ async function pgMyPay(el){
   loading(el);
   const s = CU;
   const mk = mkkey(today());
-  const d = today()
-  (const lastDay = String(new Date(new Date(d).getFullYear(),new Date(d).getMonth()+1,0).getDate()).padStart(2,'0');if(s.type==='event'){
+  const d = today();
+  const ym = d.substring(0,7);
+  const lastDay = monthEnd(ym);
+  if(s.type==='event'){
     const [rateData,attData,pendData] = await Promise.all([
       sbGet('month_rates',`staff_id=eq.${s.id}&month_key=eq.${encodeURIComponent(mk)}&select=rate`),
-      sbGet('attendance',`staff_id=eq.${s.id}&status=eq.approved&date=gte.${d.substring(0,7)}-01&date=lte.${d.substring(0,7)}-${lastDay}&select=id`),
+      sbGet('attendance',`staff_id=eq.${s.id}&status=eq.approved&date=gte.${ym}-01&date=lte.${ym}-${lastDay}&select=id`),
       sbGet('attendance',`staff_id=eq.${s.id}&status=eq.pending&select=id`)
     ]);
     const rate = Array.isArray(rateData)&&rateData[0] ? rateData[0].rate : s.rate||0;
@@ -1484,7 +1490,7 @@ async function pgMyPay(el){
     <div style="font-size:11px;color:var(--muted);text-align:center">Final amount confirmed after admin approval</div>
     </div>`;
   } else {
-    const clockData = await sbGet('clocklog',`staff_id=eq.${s.id}&status=eq.complete&date=gte.${d.substring(0,7)}-01&date=lte.${d.substring(0,7)}-${lastDay}&select=id`);
+    const clockData = await sbGet('clocklog',`staff_id=eq.${s.id}&status=eq.complete&date=gte.${ym}-01&date=lte.${ym}-${lastDay}&select=id`);
     const dw = Array.isArray(clockData)?clockData.length:0;
     const wd = getWorkDays(new Date().getFullYear(),new Date().getMonth());
     const ea = Math.max(0,wd-4-dw);
