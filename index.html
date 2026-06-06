@@ -1156,13 +1156,15 @@ async function doExportReport(type){
     const yi = parseInt(yr);
     const wd = getWorkDays(yi,mi);
     let staffQ = 'active=eq.true&select=*';if(br)staffQ+=`&branch=eq.${br}`;
+    const ld = String(new Date(yi,mi+1,0).getDate()).padStart(2,'0');
+    const m2 = String(mi+1).padStart(2,'0');
     const [staffData,attData,clockData,extData,ratesData] = await Promise.all([
       sbGet('staff',staffQ),
-      sbGet('attendance',`status=eq.approved&date=gte.${yi}-${String(mi+1).padStart(2,'0')}-01&date=lte.${yi}-${String(mi+1).padStart(2,'0')}-31${br?`&branch=eq.${br}`:''}&select=*`),
-      sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${String(mi+1).padStart(2,'0')}-01&date=lte.${yi}-${String(mi+1).padStart(2,'0')}-31${br?`&branch=eq.${br}`:''}&select=*`),
-      sbGet('outsourced',`date=gte.${yi}-${String(mi+1).padStart(2,'0')}-01&date=lte.${yi}-${String(mi+1).padStart(2,'0')}-31${br?`&branch=eq.${br}`:''}&select=*`),
+      sbGet('attendance',`status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
+      sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
+      sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`)
-    ]);
+    ]);    ]);
     const staff=Array.isArray(staffData)?staffData:[];
     const att=Array.isArray(attData)?attData:[];
     const clocks=Array.isArray(clockData)?clockData:[];
