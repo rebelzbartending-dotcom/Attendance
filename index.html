@@ -1164,7 +1164,7 @@ async function doExportReport(type){
       sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`)
-    ]);    ]);
+    ]);    
     const staff=Array.isArray(staffData)?staffData:[];
     const att=Array.isArray(attData)?attData:[];
     const clocks=Array.isArray(clockData)?clockData:[];
