@@ -300,6 +300,8 @@ function getWorkDays(y,m){return new Date(y,m+1,0).getDate()-getSundays(y,m)}
 // Returns the last calendar day (e.g. "30","31","28") for a given YYYY-MM string
 function monthEnd(ym){const[y,m]=ym.split('-').map(Number);return String(new Date(y,m,0).getDate()).padStart(2,'0');}
 function myBranch(){return CU?.branch==='ALL'?null:CU?.branch}
+// Branch Manager helper — true when current admin is a limited Branch Manager
+function isManager(){return CU?.userType==='admin' && CU?.role==='Branch Manager';}
 function toast(m,t='ok',dur=3000){const el=document.getElementById('toast');el.className='toast show '+t;el.innerHTML=(t==='ok'?'✓ ':t==='info'?'↻ ':'✗ ')+m;setTimeout(()=>el.className='toast',dur)}
 function openModal(t,b){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').innerHTML=b;document.getElementById('modal-bg').classList.remove('hidden')}
 function closeModal(){document.getElementById('modal-bg').classList.add('hidden')}
@@ -318,11 +320,21 @@ async function loadLoginDropdowns(){
     {id:'HYD',name:'Branch Admin Hyderabad',branch:'Hyderabad'},
     {id:'VSK',name:'Branch Admin Visakhapatnam',branch:'Visakhapatnam'},
   ];
+  // Also try loading from Supabase (includes any Branch Managers created by master)
+  const admins = await sbGet('admins','select=id,name,branch,role&order=id.asc');
   const asel = document.getElementById('adm-sel');
   asel.innerHTML = '<option value="">— select —</option>';
-  defaultAdmins.forEach(a => asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}</option>`);
-  // Also try loading from Supabase
-  const admins = await sbGet('admins','select=id,name,branch,role&order=id.asc');
+  // Build dropdown: hardcoded defaults first, then any extra admins/managers from Supabase
+  const shownIds = new Set();
+  defaultAdmins.forEach(a => { shownIds.add(a.id); asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}</option>`; });
+  if(Array.isArray(admins)){
+    admins.forEach(a => {
+      if(shownIds.has(a.id)) return; // already shown as a default
+      const roleLbl = a.role==='Branch Manager' ? ' (Manager)' : '';
+      asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}${roleLbl}</option>`;
+      shownIds.add(a.id);
+    });
+  }
   // Load regular staff
   const rstaff = await sbGet('staff','select=id,name,branch&type=eq.regular&active=eq.true&order=name.asc');
   const rsel = document.getElementById('rs-sel');
@@ -362,7 +374,7 @@ async function doAdminLogin(){
     'HYD':{id:'HYD',name:'Branch Admin Hyderabad',branch:'Hyderabad',role:'Branch Admin',pass:'rebelz2025'},
     'VSK':{id:'VSK',name:'Branch Admin Visakhapatnam',branch:'Visakhapatnam',role:'Branch Admin',pass:'rebelz2025'},
   };
-  // Try Supabase first
+  // Try Supabase first (covers Branch Admins and Branch Managers)
   const admins = await sbGet('admins',`id=eq.${aid}&pass=eq.${pass}`);
   if(Array.isArray(admins) && admins.length > 0){
     CU = {...admins[0], userType:'admin'};
@@ -403,7 +415,12 @@ function launch(){
   document.getElementById('su-id').textContent = CU.id || '';
   document.getElementById('su-br').textContent = CU.branch === 'ALL' ? '📍 All Branches' : '📍 ' + CU.branch;
   buildNav();
-  showPage(CU.userType === 'admin' ? 'dashboard' : CU.type === 'regular' ? 'clockin' : 'markpresent');
+  // Branch Managers start on Events (they have no full dashboard money view)
+  if(CU.userType === 'admin'){
+    showPage(isManager() ? 'events' : 'dashboard');
+  } else {
+    showPage(CU.type === 'regular' ? 'clockin' : 'markpresent');
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -411,6 +428,7 @@ function launch(){
 // ═══════════════════════════════════════════════════
 function buildNav(){
   const nav = document.getElementById('mainnav');
+  // Full admin menu (Master Admin + Branch Admin)
   const adm = [
     {sep:'Overview'},{id:'dashboard',ic:'⬡',lbl:'Dashboard'},
     {sep:'Staff'},{id:'staffmgmt',ic:'◈',lbl:'Staff'},{id:'adminmgmt',ic:'◎',lbl:'Admins',master:true},
@@ -419,10 +437,21 @@ function buildNav(){
     {sep:'Payroll'},{id:'monthrates',ic:'◉',lbl:'Monthly Rates'},{id:'salary',ic:'₹',lbl:'Salary Sheet'},
     {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
   ];
+  // Limited Branch Manager menu — attendance, events, outsourced payments, view reports only
+  const mgr = [
+    {sep:'Events'},{id:'events',ic:'◆',lbl:'Events'},{id:'outsourced',ic:'⬢',lbl:'Outsourced'},
+    {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},
+    {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
+  ];
   const staff = CU.type === 'regular' ?
     [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'}] :
     [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'}];
-  const items = CU.userType === 'admin' ? adm : staff;
+  let items;
+  if(CU.userType === 'admin'){
+    items = isManager() ? mgr : adm;
+  } else {
+    items = staff;
+  }
   nav.innerHTML = items.map(item => {
     if(item.sep) return `<div class="nsep">${item.sep}</div>`;
     if(item.master && CU.id !== 'master') return '';
@@ -439,7 +468,15 @@ async function updateApprovalBadge(){
   if(badge && Array.isArray(data) && data.length > 0) badge.textContent = data.length;
 }
 
+// Pages a Branch Manager is allowed to open (security guard)
+const MGR_ALLOWED = ['events','outsourced','approvals','reports'];
+
 function showPage(id){
+  // Block Branch Managers from restricted pages even if URL/script tries
+  if(isManager() && !MGR_ALLOWED.includes(id)){
+    toast('You do not have access to that section','er');
+    id = 'events';
+  }
   document.querySelectorAll('.ni').forEach(b => b.classList.toggle('on', b.dataset.page === id));
   const mc = document.getElementById('mc');
   mc.innerHTML = '';
@@ -650,20 +687,25 @@ async function pgAdmins(el){
   if(CU.id !== 'master'){el.innerHTML='<div class="empty">Master admin only.</div>';return}
   loading(el);
   const admins = await sbGet('admins','select=*');
-  el.innerHTML = `<div class="ptitle">Admin Logins</div><div class="psub">Manage branch admin accounts.</div>
-  <div class="card"><div class="ctitle">Add Admin</div>
-    <div class="fg3">
-      <div class="frow"><label>Name</label><input id="na-n" placeholder="Manager Name"></div>
+  el.innerHTML = `<div class="ptitle">Admin Logins</div><div class="psub">Manage branch admin and branch manager accounts.</div>
+  <div class="info-box">
+    <b>Branch Admin</b> — full access to their branch (staff, salary, reports, everything).<br>
+    <b>Branch Manager</b> — limited access only: mark attendance, create events, add outsourced staff &amp; their payments, and view event reports. Cannot see or edit salaries or staff.
+  </div>
+  <div class="card"><div class="ctitle">Add Admin / Manager</div>
+    <div class="fg4">
+      <div class="frow"><label>Name</label><input id="na-n" placeholder="Person's Name"></div>
       <div class="frow"><label>Branch</label><select id="na-br">${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select></div>
+      <div class="frow"><label>Account Type</label><select id="na-type"><option value="Branch Admin">Branch Admin (full access)</option><option value="Branch Manager">Branch Manager (limited)</option></select></div>
       <div class="frow"><label>Password</label><input type="password" id="na-p" placeholder="Set password"></div>
     </div>
-    <div class="grow"><button class="btn btn-p" onclick="addAdm()">+ Add Admin</button></div>
+    <div class="grow"><button class="btn btn-p" onclick="addAdm()">+ Add Account</button></div>
   </div>
-  <div class="card"><div class="ctitle">All Admins</div>
-    <table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>Actions</th></tr></thead><tbody>
+  <div class="card"><div class="ctitle">All Accounts</div>
+    <table><thead><tr><th>Name</th><th>ID</th><th>Branch</th><th>Role</th><th>Actions</th></tr></thead><tbody>
     ${Array.isArray(admins)?admins.map(a=>`<tr>
-      <td style="font-weight:500">${a.name}</td><td>${a.branch}</td>
-      <td><span class="b ${a.id==='master'?'bgold':'bb'}">${a.role}</span></td>
+      <td style="font-weight:500">${a.name}</td><td><code>${a.id}</code></td><td>${a.branch}</td>
+      <td><span class="b ${a.id==='master'?'bgold':a.role==='Branch Manager'?'ba':'bb'}">${a.role}</span></td>
       <td>${a.id!=='master'?`<button class="btn bsm btn-d" onclick="rmAdm('${a.id}','${a.name}')">Remove</button>`:'Protected'}</td>
     </tr>`).join(''):''}
     </tbody></table>
@@ -672,15 +714,28 @@ async function pgAdmins(el){
 async function addAdm(){
   const name=document.getElementById('na-n').value.trim();
   const br=document.getElementById('na-br').value;
+  const type=document.getElementById('na-type').value; // 'Branch Admin' or 'Branch Manager'
   const pass=document.getElementById('na-p').value;
   if(!name||!pass){toast('Name and password required','er');return}
-  const id=br.substring(0,3).toUpperCase();
-  await sbDelete('admins',`id=eq.${id}`);
-  await sbPost('admins',{id,name,branch:br,pass,role:'Branch Admin'});
-  toast('Admin added'); pgAdmins(document.getElementById('mc'));
+  const brCode = br.substring(0,3).toUpperCase();
+  let id;
+  if(type==='Branch Manager'){
+    // Managers get a -M suffix so they never overwrite the branch admin login
+    // Find how many managers already exist for this branch to keep IDs unique
+    const existing = await sbGet('admins',`id=like.${brCode}-M*&select=id`);
+    const cnt = Array.isArray(existing)?existing.length:0;
+    id = `${brCode}-M${cnt+1}`;
+  } else {
+    id = brCode; // Branch Admin uses the plain branch code (one per branch)
+    await sbDelete('admins',`id=eq.${id}`); // replace existing branch admin
+  }
+  await sbPost('admins',{id,name,branch:br,pass,role:type});
+  toast(type+' added: '+id);
+  pgAdmins(document.getElementById('mc'));
+  loadLoginDropdowns();
 }
 async function rmAdm(id,name){
-  if(confirm('Remove '+name+'?')){await sbDelete('admins',`id=eq.${id}`);pgAdmins(document.getElementById('mc'));}
+  if(confirm('Remove '+name+'?')){await sbDelete('admins',`id=eq.${id}`);pgAdmins(document.getElementById('mc'));loadLoginDropdowns();}
 }
 
 // ═══════════════════════════════════════════════════
@@ -1129,18 +1184,21 @@ async function lockSal(){
 // ═══════════════════════════════════════════════════
 async function pgReports(el){
   const months = [mkkey(today())];
+  // Branch Managers only see event/outsourcing reports — staff salary reports hidden
+  const allCards = [
+    {t:'Daily Report',icon:'📅',sub:'Today\'s clock log + event attendance',type:'daily'},
+    {t:'Monthly Salary',icon:'📆',sub:'Full salary sheet with all staff',type:'monthly'},
+    {t:'Event Report',icon:'🎪',sub:'Attendance per event with GPS status',type:'events'},
+    {t:'Staff Master',icon:'👥',sub:'All staff, roles, branches, rates',type:'staff'},
+  ];
+  const cards = isManager() ? allCards.filter(c=>c.type==='events') : allCards;
   el.innerHTML = `<div class="ptitle">Excel Reports</div><div class="psub">Download .xlsx reports — opens in Excel or Google Sheets.</div>
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
     <select id="rpt-mo">${months.map(m=>`<option>${m}</option>`).join('')}</select>
     ${!myBranch()?`<select id="rpt-br"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
   </div>
   <div class="report-grid">
-    ${[
-      {t:'Daily Report',icon:'📅',sub:'Today\'s clock log + event attendance',type:'daily'},
-      {t:'Monthly Salary',icon:'📆',sub:'Full salary sheet with all staff',type:'monthly'},
-      {t:'Event Report',icon:'🎪',sub:'Attendance per event with GPS status',type:'events'},
-      {t:'Staff Master',icon:'👥',sub:'All staff, roles, branches, rates',type:'staff'},
-    ].map(r=>`<div class="report-card" onclick="doExportReport('${r.type}')">
+    ${cards.map(r=>`<div class="report-card" onclick="doExportReport('${r.type}')">
       <div class="rc-icon">${r.icon}</div>
       <div class="rc-title">${r.t}</div>
       <div class="rc-sub">${r.sub}</div>
@@ -1150,6 +1208,8 @@ async function pgReports(el){
 }
 
 async function doExportReport(type){
+  // Safety: Branch Managers can only export the event report
+  if(isManager() && type!=='events'){toast('You can only download the Event Report','er');return}
   const mo = document.getElementById('rpt-mo')?.value||mkkey(today());
   const br = document.getElementById('rpt-br')?.value||myBranch()||'';
   toast('Preparing report...','info');
