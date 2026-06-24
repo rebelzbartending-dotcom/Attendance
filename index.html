@@ -1140,27 +1140,94 @@ async function lockSal(){
 // REPORTS
 // ═══════════════════════════════════════════════════
 async function pgReports(el){
-  const months = [mkkey(today())];
+  loading(el);
+
+  // ── Build last 12 months list ──
+  const last12 = [];
+  const now = new Date();
+  for(let i = 0; i < 12; i++){
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    last12.push(mkkey(d.toISOString().split('T')[0]));
+  }
+
+  // ── Fetch months that actually have data ──
+  const br = myBranch();
+  const [attMonths, evtMonths, clockMonths] = await Promise.all([
+    sbGet('attendance', (br?`branch=eq.${br}&`:'') + 'select=date'),
+    sbGet('events',     (br?`branch=eq.${br}&`:'') + 'select=date'),
+    sbGet('clocklog',   (br?`branch=eq.${br}&`:'') + 'select=date'),
+  ]);
+
+  // Build a Set of month keys that have real data
+  const hasData = new Set();
+  const addMonths = (rows) => {
+    if(Array.isArray(rows)) rows.forEach(r => { if(r.date) hasData.add(mkkey(r.date)); });
+  };
+  addMonths(attMonths);
+  addMonths(evtMonths);
+  addMonths(clockMonths);
+
+  // ── Also include any months from data older than 12 months ──
+  const allDataMonths = new Set([...hasData]);
+  last12.forEach(m => allDataMonths.delete(m)); // remove ones already in last12
+  const extraMonths = [...allDataMonths].sort().reverse(); // older months
+
   const allCards = [
-    {t:'Daily Report',icon:'📅',sub:'Today\'s clock log + event attendance',type:'daily'},
-    {t:'Monthly Salary',icon:'📆',sub:'Full salary sheet with all staff',type:'monthly'},
-    {t:'Event Report',icon:'🎪',sub:'Attendance per event with GPS status',type:'events'},
-    {t:'Staff Master',icon:'👥',sub:'All staff, roles, branches, rates',type:'staff'},
+    {t:'Daily Report',  icon:'📅', sub:"Today's clock log + event attendance", type:'daily'},
+    {t:'Monthly Salary',icon:'📆', sub:'Full salary sheet with all staff',      type:'monthly'},
+    {t:'Event Report',  icon:'🎪', sub:'Attendance per event with GPS status',  type:'events'},
+    {t:'Staff Master',  icon:'👥', sub:'All staff, roles, branches, rates',     type:'staff'},
   ];
   const cards = isManager() ? allCards.filter(c=>c.type==='events') : allCards;
-  el.innerHTML = `<div class="ptitle">Excel Reports</div><div class="psub">Download .xlsx reports — opens in Excel or Google Sheets.</div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
-    <select id="rpt-mo">${months.map(m=>`<option>${m}</option>`).join('')}</select>
-    ${!myBranch()?`<select id="rpt-br"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select>`:''}
+
+  // Build dropdown options — last 12 months + any extra older months
+  const buildOptions = (list) => list.map(m => {
+    const hasD = hasData.has(m);
+    return `<option value="${m}" ${hasD?'':'style="color:var(--muted2)"'}>${m}${hasD?' ●':' ○'}</option>`;
+  }).join('');
+
+  el.innerHTML = `
+  <div class="ptitle">Excel Reports</div>
+  <div class="psub">Download .xlsx reports — opens in Excel or Google Sheets.</div>
+
+  <div class="info-box" style="margin-bottom:1rem">
+    <b>● = Has data</b> &nbsp;|&nbsp; <b>○ = No data this month</b><br>
+    All 12 months shown. Select any month and download.
   </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
+    <div>
+      <label style="margin-bottom:4px">Select Month</label>
+      <select id="rpt-mo" style="min-width:200px">
+        <optgroup label="Last 12 Months">
+          ${buildOptions(last12)}
+        </optgroup>
+        ${extraMonths.length ? `<optgroup label="Older Records">${buildOptions(extraMonths)}</optgroup>` : ''}
+      </select>
+    </div>
+    ${!myBranch()?`
+    <div>
+      <label style="margin-bottom:4px">Branch</label>
+      <select id="rpt-br">
+        <option value="">All Branches</option>
+        ${BRANCHES.map(b=>`<option>${b}</option>`).join('')}
+      </select>
+    </div>`:''}
+  </div>
+
   <div class="report-grid">
-    ${cards.map(r=>`<div class="report-card" onclick="doExportReport('${r.type}')">
+    ${cards.map(r=>`
+    <div class="report-card" onclick="doExportReport('${r.type}')">
       <div class="rc-icon">${r.icon}</div>
       <div class="rc-title">${r.t}</div>
       <div class="rc-sub">${r.sub}</div>
     </div>`).join('')}
   </div>
-  <div class="info-box">📌 All reports download as .xlsx files. Selfie photos noted as YES/NO. GPS coordinates included as clickable links.</div>`;
+
+  <div class="info-box">
+    📌 All reports download as .xlsx files.<br>
+    Selfie photos noted as YES/NO. GPS coordinates included.
+  </div>`;
 }
 
 async function doExportReport(type){
