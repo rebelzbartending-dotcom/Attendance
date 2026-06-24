@@ -25,7 +25,6 @@ input,select,textarea{font-family:var(--fb);font-size:13px;color:var(--text);bac
 input:focus,select:focus{border-color:var(--gold)}
 select option{background:var(--dk3)}
 label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
-/* LOGIN */
 #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% -10%,rgba(232,160,32,.18) 0%,transparent 55%),var(--dk)}
 .lbox{background:var(--dk2);border:1px solid var(--border2);border-radius:22px;padding:2.5rem 2rem;width:100%;max-width:370px}
 .llogo{font-family:var(--ff);font-size:30px;font-weight:800;color:var(--gold);letter-spacing:-1.5px;text-align:center}
@@ -38,7 +37,6 @@ label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:
 .btn-gold:hover{background:var(--gold-l)}
 .lhint{text-align:center;font-size:11px;color:var(--muted);margin-top:.75rem}
 .lhint b{color:var(--gold)}
-/* APP SHELL */
 #app{display:flex;min-height:100vh}
 .sidebar{width:225px;flex-shrink:0;background:var(--dk2);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:1.25rem 0;position:fixed;top:0;left:0;bottom:0;z-index:100}
 .slogo{font-family:var(--ff);font-size:18px;font-weight:800;color:var(--gold);padding:0 1.25rem 1rem;border-bottom:1px solid var(--border);letter-spacing:-.5px}
@@ -260,30 +258,16 @@ async function sbUpsert(table, data){
   return await r.json();
 }
 
-// Upload photo to Supabase Storage
 async function uploadPhoto(file, filename){
   try {
     const r = await fetch(`${SB_URL}/storage/v1/object/selfies/${filename}`, {
       method:'POST',
-      headers:{
-        'apikey':SB_KEY,
-        'Authorization':'Bearer '+SB_KEY,
-        'Content-Type':'image/jpeg',
-        'x-upsert':'true'
-      },
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'image/jpeg','x-upsert':'true'},
       body:file
     });
-    if(r.ok){
-      return `${SB_URL}/storage/v1/object/public/selfies/${filename}`;
-    } else {
-      const errText = await r.text();
-      console.error('Photo upload failed:', r.status, errText);
-      return null;
-    }
-  } catch(e) {
-    console.error('Photo upload error:', e);
-    return null;
-  }
+    if(r.ok){ return `${SB_URL}/storage/v1/object/public/selfies/${filename}`; }
+    else { console.error('Photo upload failed:', r.status, await r.text()); return null; }
+  } catch(e) { console.error('Photo upload error:', e); return null; }
 }
 
 // ═══════════════════════════════════════════════════
@@ -297,10 +281,8 @@ function mkkey(d){const dt=new Date(d);return dt.toLocaleString('default',{month
 function isSunday(d){return new Date(d).getDay()===0}
 function getSundays(y,m){let c=0,d=new Date(y,m,1);while(d.getMonth()===m){if(d.getDay()===0)c++;d.setDate(d.getDate()+1);}return c}
 function getWorkDays(y,m){return new Date(y,m+1,0).getDate()-getSundays(y,m)}
-// Returns the last calendar day (e.g. "30","31","28") for a given YYYY-MM string
 function monthEnd(ym){const[y,m]=ym.split('-').map(Number);return String(new Date(y,m,0).getDate()).padStart(2,'0');}
 function myBranch(){return CU?.branch==='ALL'?null:CU?.branch}
-// Branch Manager helper — true when current admin is a limited Branch Manager
 function isManager(){return CU?.userType==='admin' && CU?.role==='Branch Manager';}
 function toast(m,t='ok',dur=3000){const el=document.getElementById('toast');el.className='toast show '+t;el.innerHTML=(t==='ok'?'✓ ':t==='info'?'↻ ':'✗ ')+m;setTimeout(()=>el.className='toast',dur)}
 function openModal(t,b){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').innerHTML=b;document.getElementById('modal-bg').classList.remove('hidden')}
@@ -310,37 +292,38 @@ function loading(el){el.innerHTML='<div class="loading">Loading</div>'}
 // ═══════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════
+
+// ── UPDATED HARDCODED PASSWORDS ──
+const HARDCODED_ADMINS = {
+  'master': {id:'master', name:'Daniel Pagidipalli',    branch:'ALL',            role:'Master Admin',  pass:'Rebelz@Master#2026'},
+  'VJA':   {id:'VJA',    name:'Branch Admin Vijayawada', branch:'Vijayawada',    role:'Branch Admin',  pass:'Rebelz@Vja#2026'},
+  'HYD':   {id:'HYD',    name:'Branch Admin Hyderabad',  branch:'Hyderabad',     role:'Branch Admin',  pass:'Rebelz@Hyd#2026'},
+  'VSK':   {id:'VSK',    name:'Branch Admin Visakhapatnam', branch:'Visakhapatnam', role:'Branch Admin', pass:'Rebelz@Vsk#2026'},
+};
+
 async function loadLoginDropdowns(){
   const statusEl = document.getElementById('login-status');
   if(statusEl) statusEl.textContent = 'Connecting to server...';
-  // Hardcoded admins as fallback (always works)
-  const defaultAdmins = [
-    {id:'master',name:'Daniel Pagidipalli',branch:'ALL'},
-    {id:'VJA',name:'Branch Admin Vijayawada',branch:'Vijayawada'},
-    {id:'HYD',name:'Branch Admin Hyderabad',branch:'Hyderabad'},
-    {id:'VSK',name:'Branch Admin Visakhapatnam',branch:'Visakhapatnam'},
-  ];
-  // Also try loading from Supabase (includes any Branch Managers created by master)
   const admins = await sbGet('admins','select=id,name,branch,role&order=id.asc');
   const asel = document.getElementById('adm-sel');
   asel.innerHTML = '<option value="">— select —</option>';
-  // Build dropdown: hardcoded defaults first, then any extra admins/managers from Supabase
   const shownIds = new Set();
-  defaultAdmins.forEach(a => { shownIds.add(a.id); asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}</option>`; });
+  Object.values(HARDCODED_ADMINS).forEach(a => {
+    shownIds.add(a.id);
+    asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}</option>`;
+  });
   if(Array.isArray(admins)){
     admins.forEach(a => {
-      if(shownIds.has(a.id)) return; // already shown as a default
+      if(shownIds.has(a.id)) return;
       const roleLbl = a.role==='Branch Manager' ? ' (Manager)' : '';
       asel.innerHTML += `<option value="${a.id}">${a.name} — ${a.branch}${roleLbl}</option>`;
       shownIds.add(a.id);
     });
   }
-  // Load regular staff
   const rstaff = await sbGet('staff','select=id,name,branch&type=eq.regular&active=eq.true&order=name.asc');
   const rsel = document.getElementById('rs-sel');
   rsel.innerHTML = '<option value="">— select —</option>';
   if(Array.isArray(rstaff)) rstaff.forEach(s => rsel.innerHTML += `<option value="${s.id}">${s.name} (${s.id}) · ${s.branch}</option>`);
-  // Load event staff
   const estaff = await sbGet('staff','select=id,name,branch&type=eq.event&active=eq.true&order=name.asc');
   const esel = document.getElementById('es-sel');
   esel.innerHTML = '<option value="">— select —</option>';
@@ -367,21 +350,14 @@ async function doAdminLogin(){
   const aid = document.getElementById('adm-sel').value;
   const pass = document.getElementById('adm-pass').value;
   if(!aid){toast('Select admin','er');return}
-  // Hardcoded fallback admin check
-  const hardcodedAdmins = {
-    'master':{id:'master',name:'Daniel Pagidipalli',branch:'ALL',role:'Master Admin',pass:'rebelz2025'},
-    'VJA':{id:'VJA',name:'Branch Admin Vijayawada',branch:'Vijayawada',role:'Branch Admin',pass:'rebelz2025'},
-    'HYD':{id:'HYD',name:'Branch Admin Hyderabad',branch:'Hyderabad',role:'Branch Admin',pass:'rebelz2025'},
-    'VSK':{id:'VSK',name:'Branch Admin Visakhapatnam',branch:'Visakhapatnam',role:'Branch Admin',pass:'rebelz2025'},
-  };
-  // Try Supabase first (covers Branch Admins and Branch Managers)
-  const admins = await sbGet('admins',`id=eq.${aid}&pass=eq.${pass}`);
+  // Try Supabase first (covers Branch Managers and any updated passwords)
+  const admins = await sbGet('admins',`id=eq.${aid}&pass=eq.${encodeURIComponent(pass)}`);
   if(Array.isArray(admins) && admins.length > 0){
     CU = {...admins[0], userType:'admin'};
     launch();
-  } else if(hardcodedAdmins[aid] && hardcodedAdmins[aid].pass === pass){
-    // Fallback to hardcoded
-    CU = {...hardcodedAdmins[aid], userType:'admin'};
+  } else if(HARDCODED_ADMINS[aid] && HARDCODED_ADMINS[aid].pass === pass){
+    // Fallback to hardcoded (updated passwords)
+    CU = {...HARDCODED_ADMINS[aid], userType:'admin'};
     launch();
   } else {
     toast('Wrong password','er');
@@ -415,7 +391,6 @@ function launch(){
   document.getElementById('su-id').textContent = CU.id || '';
   document.getElementById('su-br').textContent = CU.branch === 'ALL' ? '📍 All Branches' : '📍 ' + CU.branch;
   buildNav();
-  // Branch Managers start on Events (they have no full dashboard money view)
   if(CU.userType === 'admin'){
     showPage(isManager() ? 'events' : 'dashboard');
   } else {
@@ -428,7 +403,6 @@ function launch(){
 // ═══════════════════════════════════════════════════
 function buildNav(){
   const nav = document.getElementById('mainnav');
-  // Full admin menu (Master Admin + Branch Admin)
   const adm = [
     {sep:'Overview'},{id:'dashboard',ic:'⬡',lbl:'Dashboard'},
     {sep:'Staff'},{id:'staffmgmt',ic:'◈',lbl:'Staff'},{id:'adminmgmt',ic:'◎',lbl:'Admins',master:true},
@@ -437,7 +411,6 @@ function buildNav(){
     {sep:'Payroll'},{id:'monthrates',ic:'◉',lbl:'Monthly Rates'},{id:'salary',ic:'₹',lbl:'Salary Sheet'},
     {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
   ];
-  // Limited Branch Manager menu — attendance, events, outsourced payments, view reports only
   const mgr = [
     {sep:'Events'},{id:'events',ic:'◆',lbl:'Events'},{id:'outsourced',ic:'⬢',lbl:'Outsourced'},
     {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},
@@ -447,11 +420,7 @@ function buildNav(){
     [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'}] :
     [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'}];
   let items;
-  if(CU.userType === 'admin'){
-    items = isManager() ? mgr : adm;
-  } else {
-    items = staff;
-  }
+  if(CU.userType === 'admin'){ items = isManager() ? mgr : adm; } else { items = staff; }
   nav.innerHTML = items.map(item => {
     if(item.sep) return `<div class="nsep">${item.sep}</div>`;
     if(item.master && CU.id !== 'master') return '';
@@ -468,11 +437,9 @@ async function updateApprovalBadge(){
   if(badge && Array.isArray(data) && data.length > 0) badge.textContent = data.length;
 }
 
-// Pages a Branch Manager is allowed to open (security guard)
 const MGR_ALLOWED = ['events','outsourced','approvals','reports'];
 
 function showPage(id){
-  // Block Branch Managers from restricted pages even if URL/script tries
   if(isManager() && !MGR_ALLOWED.includes(id)){
     toast('You do not have access to that section','er');
     id = 'events';
@@ -499,10 +466,8 @@ function showPage(id){
 async function getRate(staffId, monthKey){
   const data = await sbGet('month_rates', `staff_id=eq.${staffId}&month_key=eq.${encodeURIComponent(monthKey)}&select=rate`);
   if(Array.isArray(data) && data.length > 0) return data[0].rate;
-  // Get last month rate
   const prev = await sbGet('month_rates', `staff_id=eq.${staffId}&select=rate,month_key&order=created_at.desc&limit=1`);
   if(Array.isArray(prev) && prev.length > 0) return prev[0].rate;
-  // Fall back to staff default rate
   const s = await sbGet('staff', `id=eq.${staffId}&select=rate`);
   return (Array.isArray(s) && s.length > 0) ? s[0].rate || 0 : 0;
 }
@@ -551,7 +516,6 @@ async function pgDash(el){
       </div>
     </div>
   </div>`;
-  // Load branch stats
   if(CU.branch==='ALL'){
     const bsEl = document.getElementById('branch-stats');
     const allStaff = await sbGet('staff','active=eq.true&select=branch,type');
@@ -643,8 +607,7 @@ async function addStaff(){
   if(Array.isArray(res) && res.length > 0){
     toast(name+' added as '+newId);
     ['ns-name','ns-phone','ns-pin','ns-rate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    loadStaffTable();
-    loadLoginDropdowns();
+    loadStaffTable(); loadLoginDropdowns();
   } else toast('Failed to add staff','er');
 }
 
@@ -711,29 +674,29 @@ async function pgAdmins(el){
     </tbody></table>
   </div>`;
 }
+
 async function addAdm(){
   const name=document.getElementById('na-n').value.trim();
   const br=document.getElementById('na-br').value;
-  const type=document.getElementById('na-type').value; // 'Branch Admin' or 'Branch Manager'
+  const type=document.getElementById('na-type').value;
   const pass=document.getElementById('na-p').value;
   if(!name||!pass){toast('Name and password required','er');return}
   const brCode = br.substring(0,3).toUpperCase();
   let id;
   if(type==='Branch Manager'){
-    // Managers get a -M suffix so they never overwrite the branch admin login
-    // Find how many managers already exist for this branch to keep IDs unique
     const existing = await sbGet('admins',`id=like.${brCode}-M*&select=id`);
     const cnt = Array.isArray(existing)?existing.length:0;
     id = `${brCode}-M${cnt+1}`;
   } else {
-    id = brCode; // Branch Admin uses the plain branch code (one per branch)
-    await sbDelete('admins',`id=eq.${id}`); // replace existing branch admin
+    id = brCode;
+    await sbDelete('admins',`id=eq.${id}`);
   }
   await sbPost('admins',{id,name,branch:br,pass,role:type});
   toast(type+' added: '+id);
   pgAdmins(document.getElementById('mc'));
   loadLoginDropdowns();
 }
+
 async function rmAdm(id,name){
   if(confirm('Remove '+name+'?')){await sbDelete('admins',`id=eq.${id}`);pgAdmins(document.getElementById('mc'));loadLoginDropdowns();}
 }
@@ -769,7 +732,6 @@ async function loadEvtTable(){
   const data = await sbGet('events', q);
   const el = document.getElementById('evt-t');
   if(!Array.isArray(data)||!data.length){el.innerHTML='<div class="empty">No events yet.</div>';return}
-  // Get attendance counts
   el.innerHTML = `<table><thead><tr><th>Event</th><th>Date</th><th>Branch</th><th>Attendance</th><th>Status</th><th>Actions</th></tr></thead><tbody>
   ${data.map(e=>`<tr>
     <td style="font-weight:500">${e.name}</td><td>${e.date}</td><td>${e.branch}</td>
@@ -780,7 +742,6 @@ async function loadEvtTable(){
       <button class="btn bsm btn-d" onclick="delEvt('${e.id}','${e.name}')">Delete</button>
     </div></td>
   </tr>`).join('')}</tbody></table>`;
-  // Load attendance counts async
   data.forEach(async e => {
     const att = await sbGet('attendance',`event_id=eq.${e.id}&select=id,status`);
     const el2 = document.getElementById('att-cnt-'+e.id);
@@ -916,7 +877,6 @@ async function pgApprovals(el){
     </tr>`).join('')||'<tr><td colspan="6" class="empty">No approved entries</td></tr>'}
     </tbody></table></div>
   </div>`;
-  // Update badge
   const badge = document.getElementById('appr-badge');
   if(badge) badge.textContent = pending.length || '';
 }
@@ -1021,7 +981,6 @@ async function loadRatesTable(fb){
   const staff = await sbGet('staff',q);
   const el = document.getElementById('rates-t');
   if(!Array.isArray(staff)||!staff.length){el.innerHTML='<div class="empty">No event staff found.</div>';return}
-  // Get current rates
   const ratesData = await sbGet('month_rates',`month_key=eq.${encodeURIComponent(mk)}&select=*`);
   const ratesMap = {};
   if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r.rate);
@@ -1059,7 +1018,6 @@ async function saveRates(){
 async function pgSalary(el){
   loading(el);
   const br = myBranch();
-  // Get available months from attendance + clocklog
   const attMonths = await sbGet('attendance','select=date&order=date.asc&limit=100');
   const months = [...new Set((Array.isArray(attMonths)?attMonths:[]).map(a=>mkkey(a.date)))];
   if(!months.includes(mkkey(today()))) months.unshift(mkkey(today()));
@@ -1094,7 +1052,6 @@ async function loadSalary(){
   const ratesMap = {};
   if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r.rate);
   const locked = Array.isArray(lockData)&&lockData.length>0;
-  // Get attendance + clocklog for this month
   const ld = String(td).padStart(2,'0');
   const m2 = String(mi+1).padStart(2,'0');
   const [attData, clockData, extData] = await Promise.all([
@@ -1184,7 +1141,6 @@ async function lockSal(){
 // ═══════════════════════════════════════════════════
 async function pgReports(el){
   const months = [mkkey(today())];
-  // Branch Managers only see event/outsourcing reports — staff salary reports hidden
   const allCards = [
     {t:'Daily Report',icon:'📅',sub:'Today\'s clock log + event attendance',type:'daily'},
     {t:'Monthly Salary',icon:'📆',sub:'Full salary sheet with all staff',type:'monthly'},
@@ -1208,14 +1164,13 @@ async function pgReports(el){
 }
 
 async function doExportReport(type){
-  // Safety: Branch Managers can only export the event report
   if(isManager() && type!=='events'){toast('You can only download the Event Report','er');return}
   const mo = document.getElementById('rpt-mo')?.value||mkkey(today());
   const br = document.getElementById('rpt-br')?.value||myBranch()||'';
   toast('Preparing report...','info');
   const wb = XLSX.utils.book_new();
   if(type==='daily'||type==='monthly'){
-    const [mk,yr] = mo.split(' ');
+    const [mn,yr] = mo.split(' ');
     const mi = new Date(mo+' 1').getMonth();
     const yi = parseInt(yr);
     const wd = getWorkDays(yi,mi);
@@ -1234,26 +1189,21 @@ async function doExportReport(type){
     const clocks=Array.isArray(clockData)?clockData:[];
     const ext=Array.isArray(extData)?extData:[];
     const rMap={};if(Array.isArray(ratesData))ratesData.forEach(r=>rMap[r.staff_id]=r.rate);
-    // Summary
     let rT=0,eT=0,xT=ext.reduce((s,o)=>s+o.amount,0);
     staff.filter(s=>s.type==='regular').forEach(s=>{const dw=clocks.filter(c=>c.staff_id===s.id).length;const ea=Math.max(0,wd-4-dw);const ded=Math.round(ea*(s.salary||0)/wd);rT+=(s.salary||0)-ded;});
     staff.filter(s=>s.type==='event').forEach(s=>{const rate=rMap[s.id]!==undefined?rMap[s.id]:s.rate||0;eT+=att.filter(a=>a.staff_id===s.id).length*rate;});
     const sumRows=[['REBELZ EVENTS & PROMOTIONS'],['Monthly Salary — '+mo+(br?' · '+br:' · All Branches')],['Generated',new Date().toLocaleString()],[''],
       ['Category','Amount (₹)'],['Regular Staff',rT],['Event Staff',eT],['Outsourced',xT],['GRAND TOTAL',rT+eT+xT],[''],['Working Days',wd],['Sundays',getSundays(yi,mi)],['Paid Offs','4 per staff']];
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sumRows),'Summary');
-    // Regular
     const rRows=[['Staff ID','Name','Role','Branch','Salary','Work Days','Worked','Extra Absent','Deduction','Final Pay']];
     staff.filter(s=>s.type==='regular').forEach(s=>{const dw=clocks.filter(c=>c.staff_id===s.id).length;const ea=Math.max(0,wd-4-dw);const ded=Math.round(ea*(s.salary||0)/wd);rRows.push([s.id,s.name,s.role,s.branch,s.salary||0,wd,dw,ea,ded,(s.salary||0)-ded]);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rRows),'Regular Staff');
-    // Event
     const eRows=[['Staff ID','Name','Role','Branch','Rate','Events Attended','Total Pay']];
     staff.filter(s=>s.type==='event').forEach(s=>{const rate=rMap[s.id]!==undefined?rMap[s.id]:s.rate||0;const cnt=att.filter(a=>a.staff_id===s.id).length;eRows.push([s.id,s.name,s.role,s.branch,rate,cnt,cnt*rate]);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(eRows),'Event Staff');
-    // Outsourced
     const xRows=[['ID','Name','Role','Branch','Date','Amount','Paid']];
     ext.forEach(o=>xRows.push([o.id,o.name,o.role,o.branch,o.date,o.amount,o.paid?'PAID':'UNPAID']));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(xRows),'Outsourced');
-    // Attendance detail
     const aRows=[['Staff ID','Date','Time','Role','Branch','Status','GPS Lat','GPS Lng','Has Photo']];
     att.forEach(a=>aRows.push([a.staff_id,a.date,a.time,a.role,a.branch,a.status,a.gps_lat||'',a.gps_lng||'',a.photo_url?'YES':'NO']));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aRows),'Attendance Detail');
@@ -1334,7 +1284,6 @@ async function pgMyAtt(el){
   const logList = Array.isArray(logs)?logs:[];
   const dw = logList.filter(c=>c.status==='complete').length;
   const wd = getWorkDays(new Date().getFullYear(),new Date().getMonth());
-  // Total hours worked this month
   let totalMins = 0;
   logList.filter(c=>c.status==='complete').forEach(c=>{
     if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);let m=(oh*60+om)-(ih*60+im);if(m<0)m+=1440;totalMins+=m;}
@@ -1356,7 +1305,7 @@ async function pgMyAtt(el){
 }
 
 // ═══════════════════════════════════════════════════
-// MARK PRESENT (Event Staff - Selfie + GPS)
+// MARK PRESENT (Event Staff)
 // ═══════════════════════════════════════════════════
 async function pgMark(el){
   loading(el);
@@ -1388,7 +1337,6 @@ async function pgMark(el){
       </select>
     </div>
     <div class="frow"><label>Check-in Time</label><input type="time" id="mk-time" value="${nowtime()}"></div>
-    <!-- SELFIE + GPS -->
     <div style="background:var(--dk3);border-radius:13px;padding:1rem;border:1px solid var(--border2);margin:.75rem 0">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.75rem;font-weight:600">📷 Selfie + 📍 GPS Required</div>
       <video id="cam-video" style="width:100%;border-radius:10px;display:none;max-height:200px;object-fit:cover;background:#000"></video>
@@ -1471,26 +1419,14 @@ async function submitMark(){
   if(!window._photoBlob){toast('Selfie photo is required','er');return}
   toast('Uploading selfie...','info',5000);
   stopCam();
-  // Upload selfie to Supabase Storage - REQUIRED
   const filename = `${CU.id}_${today()}_${uid()}.jpg`;
   const photoUrl = await uploadPhoto(window._photoBlob, filename);
-  if(!photoUrl){
-    toast('Photo upload failed. Check internet & try again.','er',5000);
-    return;
-  }
+  if(!photoUrl){toast('Photo upload failed. Check internet & try again.','er',5000);return;}
   toast('Saving attendance...','info');
   const res = await sbPost('attendance',{
-    id:'ATT-'+uid(),
-    staff_id:CU.id,
-    event_id:ev,
-    date:today(),
-    time,role,
-    status:'pending',
-    branch:CU.branch,
-    photo_url:photoUrl,
-    gps_lat:window._gps.lat,
-    gps_lng:window._gps.lng,
-    gps_acc:String(window._gps.acc)
+    id:'ATT-'+uid(),staff_id:CU.id,event_id:ev,date:today(),time,role,
+    status:'pending',branch:CU.branch,photo_url:photoUrl,
+    gps_lat:window._gps.lat,gps_lng:window._gps.lng,gps_acc:String(window._gps.acc)
   });
   if(Array.isArray(res)&&res.length>0){
     window._photo=null;window._photoBlob=null;window._gps=null;
