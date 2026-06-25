@@ -410,11 +410,13 @@ function buildNav(){
     {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},{id:'clocklog',ic:'◷',lbl:'Clock Log'},
     {sep:'Payroll'},{id:'monthrates',ic:'◉',lbl:'Monthly Rates'},{id:'salary',ic:'₹',lbl:'Salary Sheet'},
     {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
+    {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
   ];
   const mgr = [
     {sep:'Events'},{id:'events',ic:'◆',lbl:'Events'},{id:'outsourced',ic:'⬢',lbl:'Outsourced'},
     {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},
     {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
+    {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
   ];
   const staff = CU.type === 'regular' ?
     [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'}] :
@@ -437,7 +439,7 @@ async function updateApprovalBadge(){
   if(badge && Array.isArray(data) && data.length > 0) badge.textContent = data.length;
 }
 
-const MGR_ALLOWED = ['events','outsourced','approvals','reports'];
+const MGR_ALLOWED = ['events','outsourced','approvals','reports','changepw'];
 
 function showPage(id){
   if(isManager() && !MGR_ALLOWED.includes(id)){
@@ -453,6 +455,7 @@ function showPage(id){
     approvals:pgApprovals, clocklog:pgClockLog,
     monthrates:pgRates, salary:pgSalary,
     reports:pgReports,
+    changepw:pgChangePw,
     clockin:pgClockIn, myatt:pgMyAtt,
     markpresent:pgMark, myrecords:pgMyRecords, mypay:pgMyPay
   };
@@ -669,7 +672,10 @@ async function pgAdmins(el){
     ${Array.isArray(admins)?admins.map(a=>`<tr>
       <td style="font-weight:500">${a.name}</td><td><code>${a.id}</code></td><td>${a.branch}</td>
       <td><span class="b ${a.id==='master'?'bgold':a.role==='Branch Manager'?'ba':'bb'}">${a.role}</span></td>
-      <td>${a.id!=='master'?`<button class="btn bsm btn-d" onclick="rmAdm('${a.id}','${a.name}')">Remove</button>`:'Protected'}</td>
+      <td><div style="display:flex;gap:5px">
+        <button class="btn bsm btn-b" onclick="resetAdmPw('${a.id}','${a.name.replace(/'/g,"\\'")}')">Reset Password</button>
+        ${a.id!=='master'?`<button class="btn bsm btn-d" onclick="rmAdm('${a.id}','${a.name.replace(/'/g,"\\'")}')">Remove</button>`:''}
+      </div></td>
     </tr>`).join(''):''}
     </tbody></table>
   </div>`;
@@ -699,6 +705,107 @@ async function addAdm(){
 
 async function rmAdm(id,name){
   if(confirm('Remove '+name+'?')){await sbDelete('admins',`id=eq.${id}`);pgAdmins(document.getElementById('mc'));loadLoginDropdowns();}
+}
+
+// ── MASTER: Reset any admin's password ──
+function resetAdmPw(id,name){
+  openModal('Reset Password — '+name,`
+    <div class="info-box">You are setting a new password for <b>${name}</b> (<code>${id}</code>). They will use it on their next login. No need to know their old password.</div>
+    <div class="frow"><label>New Password</label><input type="password" id="rap-new" placeholder="Enter new password" onkeydown="if(event.key==='Enter')doResetAdmPw('${id}','${name.replace(/'/g,"\\'")}')"></div>
+    <div class="frow"><label>Confirm New Password</label><input type="password" id="rap-cf" placeholder="Re-enter new password"></div>
+    <p id="rap-msg" style="color:var(--red);font-size:12px;margin:4px 0 10px;min-height:14px"></p>
+    <div class="grow"><button class="btn btn-p" onclick="doResetAdmPw('${id}','${name.replace(/'/g,"\\'")}')">Reset Password</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+}
+
+async function doResetAdmPw(id,name){
+  const nw=document.getElementById('rap-new').value.trim();
+  const cf=document.getElementById('rap-cf').value.trim();
+  const msg=document.getElementById('rap-msg');
+  msg.style.color='var(--red)';
+  if(!nw){msg.textContent='Enter a new password.';return}
+  if(nw.length<6){msg.textContent='Password must be at least 6 characters.';return}
+  if(nw!==cf){msg.textContent='Passwords do not match.';return}
+  // 'master' lives only in the hardcoded fallback — block resetting it here to avoid lockout confusion
+  if(id==='master'){msg.textContent='Master password cannot be reset here. Use the hardcoded value in the file.';return}
+  const res=await sbPatch('admins',`id=eq.${id}`,{pass:nw});
+  if(Array.isArray(res)&&res.length>0){
+    closeModal();
+    toast('Password reset for '+name+' ✓');
+  } else {
+    msg.textContent='Reset failed. This account may only exist as a hardcoded fallback (not in the database).';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// CHANGE PASSWORD (own account) — all admins & managers
+// ═══════════════════════════════════════════════════
+async function pgChangePw(el){
+  const isHardcodedOnly = !!HARDCODED_ADMINS[CU.id] && (CU.id==='master');
+  el.innerHTML = `
+  <div class="ptitle">Change Password</div>
+  <div class="psub">Update the password for your own account.</div>
+  <div style="max-width:420px">
+    <div class="card">
+      <div class="ctitle">Your Account</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
+        <div class="av">${ini(CU.name)}</div>
+        <div><div style="font-weight:600">${CU.name}</div><div style="font-size:12px;color:var(--muted)">${CU.role} · <code>${CU.id}</code></div></div>
+      </div>
+      ${isHardcodedOnly?`
+      <div class="info-box" style="border-left-color:var(--amber)">
+        ⚠ <b>Master account note:</b> The master login uses a password stored inside the app file (not the database). To change it, the value must be updated in <code>index.html</code> on GitHub. This screen cannot change the master password directly.
+      </div>`:''}
+      <div class="frow"><label>Current Password</label><input type="password" id="cp-cur" placeholder="Enter current password" ${isHardcodedOnly?'disabled':''}></div>
+      <div class="frow"><label>New Password</label><input type="password" id="cp-new" placeholder="At least 6 characters" ${isHardcodedOnly?'disabled':''}></div>
+      <div class="frow"><label>Confirm New Password</label><input type="password" id="cp-cf" placeholder="Re-enter new password" ${isHardcodedOnly?'disabled':''} onkeydown="if(event.key==='Enter')changeMyPassword()"></div>
+      <p id="cp-msg" style="font-size:12px;margin:4px 0 10px;min-height:14px;color:var(--red)"></p>
+      <button class="btn btn-p" onclick="changeMyPassword()" ${isHardcodedOnly?'disabled style="opacity:.5;cursor:not-allowed"':''}>Update Password</button>
+    </div>
+    <div class="info-box">
+      🔒 Choose a strong password and keep it private. After changing, you will use the new password the next time you log in.
+    </div>
+  </div>`;
+}
+
+async function changeMyPassword(){
+  const cur=document.getElementById('cp-cur').value.trim();
+  const nw=document.getElementById('cp-new').value.trim();
+  const cf=document.getElementById('cp-cf').value.trim();
+  const msg=document.getElementById('cp-msg');
+  msg.style.color='var(--red)';
+
+  if(CU.id==='master'){msg.textContent='Master password must be changed in the index.html file on GitHub.';return}
+  if(!cur||!nw||!cf){msg.textContent='Please fill all three fields.';return}
+  if(nw.length<6){msg.textContent='New password must be at least 6 characters.';return}
+  if(nw!==cf){msg.textContent='New passwords do not match.';return}
+  if(nw===cur){msg.textContent='New password must be different from the current one.';return}
+
+  // Verify current password against the database
+  const check=await sbGet('admins',`id=eq.${CU.id}&pass=eq.${encodeURIComponent(cur)}&select=id`);
+  let currentOk = Array.isArray(check) && check.length>0;
+  // Fallback: if account not yet in DB but matches hardcoded value
+  if(!currentOk && HARDCODED_ADMINS[CU.id] && HARDCODED_ADMINS[CU.id].pass===cur){ currentOk=true; }
+  if(!currentOk){msg.textContent='Current password is incorrect.';return}
+
+  // Update in the database (upsert so hardcoded-only branch admins get a real DB row)
+  const existing = await sbGet('admins',`id=eq.${CU.id}&select=id`);
+  let res;
+  if(Array.isArray(existing) && existing.length>0){
+    res = await sbPatch('admins',`id=eq.${CU.id}`,{pass:nw});
+  } else {
+    res = await sbPost('admins',{id:CU.id,name:CU.name,branch:CU.branch,pass:nw,role:CU.role});
+  }
+  if(Array.isArray(res) && res.length>0){
+    CU.pass = nw;
+    msg.style.color='var(--green)';
+    msg.textContent='✓ Password changed successfully. Use it next time you log in.';
+    document.getElementById('cp-cur').value='';
+    document.getElementById('cp-new').value='';
+    document.getElementById('cp-cf').value='';
+    toast('Password updated ✓');
+  } else {
+    msg.textContent='Update failed. Check your internet and try again.';
+  }
 }
 
 // ═══════════════════════════════════════════════════
