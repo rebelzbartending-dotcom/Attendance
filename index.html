@@ -401,8 +401,8 @@ function buildNav(){
     {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
   ];
   const staff = CU.type === 'regular' ?
-    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'}] :
-    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'}];
+    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'}] :
+    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'}];
   let items;
   if(CU.userType === 'admin'){ items = isManager() ? mgr : adm; } else { items = staff; }
   nav.innerHTML = items.map(item => {
@@ -436,7 +436,7 @@ function showPage(id){
     reports:pgReports,
     changepw:pgChangePw,
     clockin:pgClockIn, myatt:pgMyAtt,
-    markpresent:pgMark, myrecords:pgMyRecords, mypay:pgMyPay
+    markpresent:pgMark, myrecords:pgMyRecords, mypay:pgMyPay, myhistory:pgMyHistory
   };
   if(pages[id]) pages[id](mc);
   document.getElementById('sidebar').classList.remove('open');
@@ -1763,6 +1763,83 @@ async function pgMyPay(el){
     </div>
     </div>`;
   }
+}
+// ═══════════════════════════════════════════════════
+// PAY HISTORY (Staff — event & regular, month by month)
+// ═══════════════════════════════════════════════════
+async function pgMyHistory(el){
+  loading(el);
+  const s = CU;
+  const isEvent = s.type==='event';
+  const [recs, rates, locks] = await Promise.all([
+    isEvent
+      ? sbGet('attendance',`staff_id=eq.${s.id}&status=eq.approved&select=date&limit=1000`)
+      : sbGet('clocklog',`staff_id=eq.${s.id}&status=eq.complete&select=date&limit=1000`),
+    isEvent ? sbGet('month_rates',`staff_id=eq.${s.id}&select=month_key,rate`) : Promise.resolve([]),
+    sbGet('salary_lock','select=month_key,branch')
+  ]);
+  // Count records per month
+  const byMonth = {};
+  (Array.isArray(recs)?recs:[]).forEach(r=>{ if(r.date){ const k=mkkey(r.date); byMonth[k]=(byMonth[k]||0)+1; } });
+  const thisMk = mkkey(today());
+  const now = new Date();
+  const lastMk = mkkey(new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString().split('T')[0]);
+  if(!(thisMk in byMonth)) byMonth[thisMk]=0;
+  // Rates + paid status
+  const ratesMap = {};
+  (Array.isArray(rates)?rates:[]).forEach(r=>ratesMap[r.month_key]=r.rate);
+  const lockSet = new Set();
+  (Array.isArray(locks)?locks:[]).forEach(l=>{ if(l.branch===s.branch || l.branch==='ALL') lockSet.add(l.month_key); });
+  const isPaid = mk => lockSet.has(mk);
+  // Per-month calc
+  function calc(mk){
+    const cnt = byMonth[mk]||0;
+    if(isEvent){
+      const rate = ratesMap[mk]!==undefined ? ratesMap[mk] : (s.rate||0);
+      return {cnt, rate, pay:cnt*rate};
+    } else {
+      const dd = new Date(mk+' 1');
+      const wd = getWorkDays(dd.getFullYear(), dd.getMonth());
+      const ea = Math.max(0, wd-4-cnt);
+      const ded = Math.round(ea*(s.salary||0)/wd);
+      return {cnt, wd, ded, pay:(s.salary||0)-ded};
+    }
+  }
+  const months = Object.keys(byMonth).sort((a,b)=>new Date(b+' 1')-new Date(a+' 1'));
+  const thisC = calc(thisMk);
+  const lastC = calc(lastMk);
+  const totalEarned = months.reduce((sum,mk)=>sum+calc(mk).pay,0);
+  const totalPaid = months.filter(mk=>isPaid(mk)).reduce((sum,mk)=>sum+calc(mk).pay,0);
+  const unitLbl = isEvent?'events':'days';
+  el.innerHTML = `<div class="ptitle">Pay History</div>
+  <div class="psub">${s.name} · ${s.role} · ${s.branch}</div>
+  <div class="sgrid">
+    <div class="stat"><div class="sv">${thisC.cnt}</div><div class="sl">This Month (${unitLbl})</div></div>
+    <div class="stat"><div class="sv" style="color:var(--gold)">₹${thisC.pay.toLocaleString()}</div><div class="sl">This Month Pay</div></div>
+    <div class="stat"><div class="sv">${lastC.cnt}</div><div class="sl">Last Month (${unitLbl})</div></div>
+    <div class="stat"><div class="sv" style="color:${isPaid(lastMk)?'var(--green)':'var(--amber)'}">₹${lastC.pay.toLocaleString()}</div><div class="sl">Last Month ${isPaid(lastMk)?'· Paid ✓':'· Pending'}</div></div>
+  </div>
+  <div class="sal-hero">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.75rem">
+      <div><div class="sal-total">₹${totalEarned.toLocaleString()}</div><div class="sal-lbl">Total earned (all time)</div></div>
+      <div style="text-align:right"><div class="sal-total" style="font-size:24px;color:var(--green)">₹${totalPaid.toLocaleString()}</div><div class="sal-lbl">Received / paid so far</div></div>
+    </div>
+  </div>
+  <div class="card"><div class="ctitle">Month-by-Month</div><div class="tw">
+    <table><thead><tr><th>Month</th><th>${isEvent?'Events':'Days Worked'}</th>${isEvent?'<th>Rate</th>':'<th>Salary</th><th>Deduction</th>'}<th>${isEvent?'Earned':'Net Pay'}</th><th>Status</th></tr></thead>
+    <tbody>${months.map(mk=>{
+      const c=calc(mk);
+      const paid=isPaid(mk);
+      return `<tr>
+        <td style="font-weight:500">${mk}${mk===thisMk?' <span class="b bgold" style="font-size:10px">Current</span>':''}</td>
+        <td style="font-weight:600">${c.cnt}</td>
+        ${isEvent?`<td>₹${(c.rate||0).toLocaleString()}</td>`:`<td>₹${(s.salary||0).toLocaleString()}</td><td style="color:${c.ded>0?'var(--red)':'var(--muted)'}">${c.ded>0?'−₹'+c.ded.toLocaleString():'—'}</td>`}
+        <td style="font-weight:700;color:var(--gold)">₹${c.pay.toLocaleString()}</td>
+        <td><span class="b ${paid?'bg':'ba'}">${paid?'Paid ✓':'In progress'}</span></td>
+      </tr>`;
+    }).join('')||'<tr><td colspan="'+(isEvent?5:6)+'" class="empty">No history yet</td></tr>'}</tbody></table>
+  </div></div>
+  <div class="info-box">🗓 <b>Paid ✓</b> = salary for that month has been finalized by admin. <b>In progress</b> = current or not yet finalized. Current-month amounts are provisional until finalized.</div>`;
 }
 // ═══════════════════════════════════════════════════
 // INIT
