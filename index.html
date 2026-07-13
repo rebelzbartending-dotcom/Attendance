@@ -1257,15 +1257,18 @@ async function loadSalary(){
   const td = new Date(yi,mi+1,0).getDate();
   let staffQ = 'active=eq.true&select=*';
   if(fb) staffQ += `&branch=eq.${fb}`;
-  const [staffData, ratesData, lockData] = await Promise.all([
+  const [staffData, ratesData, lockData, paidData] = await Promise.all([
     sbGet('staff',staffQ),
     sbGet('month_rates',`month_key=eq.${encodeURIComponent(mk)}&select=*`),
-    sbGet('salary_lock',`month_key=eq.${encodeURIComponent(mk)}${fb?`&branch=eq.${fb}`:''}`)
+    sbGet('salary_lock',`month_key=eq.${encodeURIComponent(mk)}${fb?`&branch=eq.${fb}`:''}`),
+    sbGet('salary_paid',`month_key=eq.${encodeURIComponent(mk)}${fb?`&branch=eq.${fb}`:''}&select=*`)
   ]);
   const staff = Array.isArray(staffData)?staffData:[];
   const ratesMap = {};
   if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r.rate);
   const locked = Array.isArray(lockData)&&lockData.length>0;
+  const paidMap = {};
+  if(Array.isArray(paidData)) paidData.forEach(p=>{ paidMap[p.staff_id]=p.paid===true; });
   const ld = String(td).padStart(2,'0');
   const m2 = String(mi+1).padStart(2,'0');
   const [attData, clockData, extData] = await Promise.all([
@@ -1295,6 +1298,9 @@ async function loadSalary(){
     return {s,rate,cnt:staffAtt.length,pay};
   });
   const grand = regT+evtT+extT;
+  const payStaffList = [...regRows.map(r=>r.s), ...evtRows.map(r=>r.s)];
+  const paidCount = payStaffList.filter(s=>paidMap[s.id]===true).length;
+  const totalPayStaff = payStaffList.length;
   document.getElementById('sal-wrap').innerHTML = `
   <div class="sal-hero">
     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
@@ -1302,6 +1308,7 @@ async function loadSalary(){
         <div class="sal-total">₹${grand.toLocaleString()}</div>
         <div class="sal-lbl">Grand Total — ${mk}${fb?' · '+fb:' · All Branches'}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:5px">Working days: ${wd} (${td} − ${sun} Sundays) · 4 paid offs per staff</div>
+        <div style="margin-top:8px"><span class="b ${totalPayStaff>0&&paidCount===totalPayStaff?'bg':'ba'}">💰 Paid: ${paidCount} / ${totalPayStaff} staff</span></div>
       </div>${locked?'<span class="b bg">🔒 Finalized</span>':''}
     </div>
     <div class="sal-bd">
@@ -1311,8 +1318,8 @@ async function loadSalary(){
     </div>
   </div>
   <div class="ssep">Regular Staff</div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Salary</th><th>Work Days</th><th>Worked</th><th>Extra Absent</th><th>Deduction</th><th>Final Pay</th></tr></thead>
-  <tbody>${regRows.map(({s,dw,wd,ea,ded,pay})=>`<tr>
+  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Salary</th><th>Work Days</th><th>Worked</th><th>Extra Absent</th><th>Deduction</th><th>Final Pay</th><th>Payment</th></tr></thead>
+  <tbody>${regRows.map(({s,dw,wd,ea,ded,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-r">${ini(s.name)}</div>${s.name}</div></td>
     <td>${s.branch}</td><td>₹${(s.salary||0).toLocaleString()}</td>
     <td>${wd} <span style="font-size:11px;color:var(--muted)">(+4 offs)</span></td>
@@ -1320,16 +1327,17 @@ async function loadSalary(){
     <td style="color:${ea>0?'var(--red)':'var(--muted)'}">${ea>0?ea+' days':'—'}</td>
     <td style="color:${ded>0?'var(--red)':'var(--muted)'}">${ded>0?'−₹'+ded.toLocaleString():'—'}</td>
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
-  </tr>`).join('')||'<tr><td colspan="8" class="empty">No regular staff.</td></tr>'}</tbody></table></div></div>
+    <td><button class="btn bsm ${pd?'btn-s':'btn-d'}" onclick="toggleSalaryPaid('${s.id}','${mk}','${s.branch}',${pd})">${pd?'✓ Paid':'Mark Paid'}</button></td>
+  </tr>`;}).join('')||'<tr><td colspan="9" class="empty">No regular staff.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Event Staff</div>
   <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>Rate</th><th>Events</th><th>Total Pay</th><th>Payment</th></tr></thead>
-  <tbody>${evtRows.map(({s,rate,cnt,pay})=>`<tr>
+  <tbody>${evtRows.map(({s,rate,cnt,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-e">${ini(s.name)}</div>${s.name}</div></td>
     <td>${s.branch}</td><td>${s.role}</td><td>₹${rate.toLocaleString()}</td>
     <td style="font-weight:600">${cnt}</td>
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
-    <td><span class="b ${locked?'bg':'ba'}">${locked?'Paid ✓':'Pending'}</span></td>
-  </tr>`).join('')||'<tr><td colspan="7" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
+    <td><button class="btn bsm ${pd?'btn-s':'btn-d'}" onclick="toggleSalaryPaid('${s.id}','${mk}','${s.branch}',${pd})">${pd?'✓ Paid':'Mark Paid'}</button></td>
+  </tr>`;}).join('')||'<tr><td colspan="7" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Outsourced</div>
   <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Branch</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
   <tbody>${ext.map(o=>`<tr>
@@ -1348,6 +1356,17 @@ async function lockSal(){
     await sbPost('salary_lock',{id:mk+fb,month_key:mk,branch:fb});
     toast('Locked ✓');loadSalary();
   }
+}
+// Per-person salary payment toggle (event & regular staff)
+async function toggleSalaryPaid(staffId, monthKey, branch, current){
+  const now = !current;
+  await sbUpsert('salary_paid',{
+    id: staffId+'__'+monthKey,
+    staff_id: staffId, month_key: monthKey, branch: branch||'',
+    paid: now, paid_on: now ? new Date().toISOString() : null
+  });
+  toast(now ? 'Marked as Paid ✓' : 'Marked as Not Paid', now?'ok':'info');
+  loadSalary();
 }
 // ═══════════════════════════════════════════════════
 // REPORTS
@@ -1445,19 +1464,19 @@ async function doExportReport(type){
     let staffQ = 'active=eq.true&select=*';if(br)staffQ+=`&branch=eq.${br}`;
     const ld = String(new Date(yi,mi+1,0).getDate()).padStart(2,'0');
     const m2 = String(mi+1).padStart(2,'0');
-    const [staffData,attData,clockData,extData,ratesData,lockData] = await Promise.all([
+    const [staffData,attData,clockData,extData,ratesData,paidData] = await Promise.all([
       sbGet('staff',staffQ),
       sbGet('attendance',`status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`),
-      sbGet('salary_lock',`month_key=eq.${encodeURIComponent(mo)}${br?`&branch=eq.${br}`:''}`)
+      sbGet('salary_paid',`month_key=eq.${encodeURIComponent(mo)}${br?`&branch=eq.${br}`:''}&select=*`)
     ]);
     const staff=Array.isArray(staffData)?staffData:[];
     const att=Array.isArray(attData)?attData:[];
     const clocks=Array.isArray(clockData)?clockData:[];
     const ext=Array.isArray(extData)?extData:[];
-    const monthLocked=Array.isArray(lockData)&&lockData.length>0;
+    const paidMapX={};if(Array.isArray(paidData))paidData.forEach(p=>{paidMapX[p.staff_id]=p.paid===true;});
     const rMap={};if(Array.isArray(ratesData))ratesData.forEach(r=>rMap[r.staff_id]=r.rate);
     let rT=0,eT=0,xT=ext.reduce((s,o)=>s+o.amount,0);
     staff.filter(s=>s.type==='regular').forEach(s=>{const dw=clocks.filter(c=>c.staff_id===s.id).length;const ea=Math.max(0,wd-4-dw);const ded=Math.round(ea*(s.salary||0)/wd);rT+=(s.salary||0)-ded;});
@@ -1465,11 +1484,11 @@ async function doExportReport(type){
     const sumRows=[['REBELZ EVENTS & PROMOTIONS'],['Monthly Salary — '+mo+(br?' · '+br:' · All Branches')],['Generated',new Date().toLocaleString()],[''],
       ['Category','Amount (₹)'],['Regular Staff',rT],['Event Staff',eT],['Outsourced',xT],['GRAND TOTAL',rT+eT+xT],[''],['Working Days',wd],['Sundays',getSundays(yi,mi)],['Paid Offs','4 per staff']];
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(sumRows),'Summary');
-    const rRows=[['Staff ID','Name','Role','Branch','Salary','Work Days','Worked','Extra Absent','Deduction','Final Pay']];
-    staff.filter(s=>s.type==='regular').forEach(s=>{const dw=clocks.filter(c=>c.staff_id===s.id).length;const ea=Math.max(0,wd-4-dw);const ded=Math.round(ea*(s.salary||0)/wd);rRows.push([s.id,s.name,s.role,s.branch,s.salary||0,wd,dw,ea,ded,(s.salary||0)-ded]);});
+    const rRows=[['Staff ID','Name','Role','Branch','Salary','Work Days','Worked','Extra Absent','Deduction','Final Pay','Payment Status']];
+    staff.filter(s=>s.type==='regular').forEach(s=>{const dw=clocks.filter(c=>c.staff_id===s.id).length;const ea=Math.max(0,wd-4-dw);const ded=Math.round(ea*(s.salary||0)/wd);rRows.push([s.id,s.name,s.role,s.branch,s.salary||0,wd,dw,ea,ded,(s.salary||0)-ded,paidMapX[s.id]?'PAID':'UNPAID']);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rRows),'Regular Staff');
     const eRows=[['Staff ID','Name','Role','Branch','Rate','Events Attended','Total Pay','Payment Status']];
-    staff.filter(s=>s.type==='event').forEach(s=>{const rate=rMap[s.id]!==undefined?rMap[s.id]:s.rate||0;const cnt=att.filter(a=>a.staff_id===s.id).length;eRows.push([s.id,s.name,s.role,s.branch,rate,cnt,cnt*rate,monthLocked?'PAID':'PENDING']);});
+    staff.filter(s=>s.type==='event').forEach(s=>{const rate=rMap[s.id]!==undefined?rMap[s.id]:s.rate||0;const cnt=att.filter(a=>a.staff_id===s.id).length;eRows.push([s.id,s.name,s.role,s.branch,rate,cnt,cnt*rate,paidMapX[s.id]?'PAID':'UNPAID']);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(eRows),'Event Staff');
     const xRows=[['ID','Name','Role','Branch','Date','Amount','Paid']];
     ext.forEach(o=>xRows.push([o.id,o.name,o.role,o.branch,o.date,o.amount,o.paid?'PAID':'UNPAID']));
@@ -1779,7 +1798,7 @@ async function pgMyHistory(el){
       ? sbGet('attendance',`staff_id=eq.${s.id}&status=eq.approved&select=date&limit=1000`)
       : sbGet('clocklog',`staff_id=eq.${s.id}&status=eq.complete&select=date&limit=1000`),
     isEvent ? sbGet('month_rates',`staff_id=eq.${s.id}&select=month_key,rate`) : Promise.resolve([]),
-    sbGet('salary_lock','select=month_key,branch')
+    sbGet('salary_paid',`staff_id=eq.${s.id}&paid=eq.true&select=month_key`)
   ]);
   // Count records per month
   const byMonth = {};
@@ -1791,9 +1810,9 @@ async function pgMyHistory(el){
   // Rates + paid status
   const ratesMap = {};
   (Array.isArray(rates)?rates:[]).forEach(r=>ratesMap[r.month_key]=r.rate);
-  const lockSet = new Set();
-  (Array.isArray(locks)?locks:[]).forEach(l=>{ if(l.branch===s.branch || l.branch==='ALL') lockSet.add(l.month_key); });
-  const isPaid = mk => lockSet.has(mk);
+  const paidSet = new Set();
+  (Array.isArray(locks)?locks:[]).forEach(p=>{ if(p.month_key) paidSet.add(p.month_key); });
+  const isPaid = mk => paidSet.has(mk);
   // Per-month calc
   function calc(mk){
     const cnt = byMonth[mk]||0;
@@ -1842,7 +1861,7 @@ async function pgMyHistory(el){
       </tr>`;
     }).join('')||'<tr><td colspan="'+(isEvent?5:6)+'" class="empty">No history yet</td></tr>'}</tbody></table>
   </div></div>
-  <div class="info-box">🗓 <b>Paid ✓</b> = salary for that month has been finalized by admin. <b>In progress</b> = current or not yet finalized. Current-month amounts are provisional until finalized.</div>`;
+  <div class="info-box">🗓 <b>Paid ✓</b> = admin has marked your salary paid for that month. <b>In progress</b> = not paid yet. Current-month amounts may change as more attendance is added.</div>`;
 }
 // ═══════════════════════════════════════════════════
 // INIT
