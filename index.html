@@ -1322,13 +1322,14 @@ async function loadSalary(){
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
   </tr>`).join('')||'<tr><td colspan="8" class="empty">No regular staff.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Event Staff</div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>Rate</th><th>Events</th><th>Total Pay</th></tr></thead>
+  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>Rate</th><th>Events</th><th>Total Pay</th><th>Payment</th></tr></thead>
   <tbody>${evtRows.map(({s,rate,cnt,pay})=>`<tr>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-e">${ini(s.name)}</div>${s.name}</div></td>
     <td>${s.branch}</td><td>${s.role}</td><td>₹${rate.toLocaleString()}</td>
     <td style="font-weight:600">${cnt}</td>
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
-  </tr>`).join('')||'<tr><td colspan="6" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
+    <td><span class="b ${locked?'bg':'ba'}">${locked?'Paid ✓':'Pending'}</span></td>
+  </tr>`).join('')||'<tr><td colspan="7" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Outsourced</div>
   <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Branch</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
   <tbody>${ext.map(o=>`<tr>
@@ -1444,17 +1445,19 @@ async function doExportReport(type){
     let staffQ = 'active=eq.true&select=*';if(br)staffQ+=`&branch=eq.${br}`;
     const ld = String(new Date(yi,mi+1,0).getDate()).padStart(2,'0');
     const m2 = String(mi+1).padStart(2,'0');
-    const [staffData,attData,clockData,extData,ratesData] = await Promise.all([
+    const [staffData,attData,clockData,extData,ratesData,lockData] = await Promise.all([
       sbGet('staff',staffQ),
       sbGet('attendance',`status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
-      sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`)
+      sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`),
+      sbGet('salary_lock',`month_key=eq.${encodeURIComponent(mo)}${br?`&branch=eq.${br}`:''}`)
     ]);
     const staff=Array.isArray(staffData)?staffData:[];
     const att=Array.isArray(attData)?attData:[];
     const clocks=Array.isArray(clockData)?clockData:[];
     const ext=Array.isArray(extData)?extData:[];
+    const monthLocked=Array.isArray(lockData)&&lockData.length>0;
     const rMap={};if(Array.isArray(ratesData))ratesData.forEach(r=>rMap[r.staff_id]=r.rate);
     let rT=0,eT=0,xT=ext.reduce((s,o)=>s+o.amount,0);
     staff.filter(s=>s.type==='regular').forEach(s=>{const dw=clocks.filter(c=>c.staff_id===s.id).length;const ea=Math.max(0,wd-4-dw);const ded=Math.round(ea*(s.salary||0)/wd);rT+=(s.salary||0)-ded;});
@@ -1465,8 +1468,8 @@ async function doExportReport(type){
     const rRows=[['Staff ID','Name','Role','Branch','Salary','Work Days','Worked','Extra Absent','Deduction','Final Pay']];
     staff.filter(s=>s.type==='regular').forEach(s=>{const dw=clocks.filter(c=>c.staff_id===s.id).length;const ea=Math.max(0,wd-4-dw);const ded=Math.round(ea*(s.salary||0)/wd);rRows.push([s.id,s.name,s.role,s.branch,s.salary||0,wd,dw,ea,ded,(s.salary||0)-ded]);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rRows),'Regular Staff');
-    const eRows=[['Staff ID','Name','Role','Branch','Rate','Events Attended','Total Pay']];
-    staff.filter(s=>s.type==='event').forEach(s=>{const rate=rMap[s.id]!==undefined?rMap[s.id]:s.rate||0;const cnt=att.filter(a=>a.staff_id===s.id).length;eRows.push([s.id,s.name,s.role,s.branch,rate,cnt,cnt*rate]);});
+    const eRows=[['Staff ID','Name','Role','Branch','Rate','Events Attended','Total Pay','Payment Status']];
+    staff.filter(s=>s.type==='event').forEach(s=>{const rate=rMap[s.id]!==undefined?rMap[s.id]:s.rate||0;const cnt=att.filter(a=>a.staff_id===s.id).length;eRows.push([s.id,s.name,s.role,s.branch,rate,cnt,cnt*rate,monthLocked?'PAID':'PENDING']);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(eRows),'Event Staff');
     const xRows=[['ID','Name','Role','Branch','Date','Amount','Paid']];
     ext.forEach(o=>xRows.push([o.id,o.name,o.role,o.branch,o.date,o.amount,o.paid?'PAID':'UNPAID']));
