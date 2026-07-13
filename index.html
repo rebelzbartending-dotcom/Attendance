@@ -1360,13 +1360,19 @@ async function lockSal(){
 // Per-person salary payment toggle (event & regular staff)
 async function toggleSalaryPaid(staffId, monthKey, branch, current){
   const now = !current;
-  await sbUpsert('salary_paid',{
+  const res = await sbUpsert('salary_paid',{
     id: staffId+'__'+monthKey,
     staff_id: staffId, month_key: monthKey, branch: branch||'',
     paid: now, paid_on: now ? new Date().toISOString() : null
   });
-  toast(now ? 'Marked as Paid ✓' : 'Marked as Not Paid', now?'ok':'info');
-  loadSalary();
+  if(Array.isArray(res) && res.length>0){
+    toast(now ? 'Marked as Paid ✓' : 'Marked as Not Paid', now?'ok':'info');
+    loadSalary();
+  } else {
+    console.error('salary_paid save failed:', res);
+    const emsg = (res && res.message) ? res.message : 'unknown error';
+    toast('Save failed — check the salary_paid table setup. ('+emsg+')','er',7000);
+  }
 }
 // ═══════════════════════════════════════════════════
 // REPORTS
