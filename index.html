@@ -163,7 +163,6 @@ code{font-family:monospace;font-size:12px;color:var(--gold);background:var(--gol
 </head>
 <body>
 <button class="mob-btn" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
-
 <div id="login-screen">
 <div class="lbox">
   <div class="llogo">REBELZ</div>
@@ -193,7 +192,6 @@ code{font-family:monospace;font-size:12px;color:var(--gold);background:var(--gol
   </div>
 </div>
 </div>
-
 <div id="app" class="hidden">
 <div class="sidebar" id="sidebar">
   <div class="slogo">REBELZ<span>Attendance System</span></div>
@@ -210,12 +208,10 @@ code{font-family:monospace;font-size:12px;color:var(--gold);background:var(--gol
 </div>
 <div class="main" id="mc"></div>
 </div>
-
 <div class="modal-bg hidden" id="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal"><div class="modal-title" id="modal-title"></div><div id="modal-body"></div></div>
 </div>
 <div class="toast" id="toast"></div>
-
 <script>
 // ═══════════════════════════════════════════════════
 // SUPABASE CONFIG
@@ -224,15 +220,12 @@ const SB_URL = 'https://hsdusxwfyraualetqrhb.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhzZHVzeHdmeXJhdWFsZXRxcmhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0OTE5NzksImV4cCI6MjA5NjA2Nzk3OX0.liBy1yYKYgEYB2ZtF_CNf7OMDkTd3tuLCRHSHkNaNDE';
 const BRANCHES = ['Vijayawada','Hyderabad','Visakhapatnam'];
 const ROLES = ['Senior Bartender','Bartender','Bar Assistant','Barista','Setup Crew','Trainer','Event Manager','Office Manager','Admin'];
-
 let CU = null;
 let _camStream = null;
-
 // ═══════════════════════════════════════════════════
 // SUPABASE API HELPERS
 // ═══════════════════════════════════════════════════
 const H = {'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY};
-
 async function sbGet(table, query=''){
   try {
     const url = query ? `${SB_URL}/rest/v1/${table}?${query}` : `${SB_URL}/rest/v1/${table}`;
@@ -257,7 +250,6 @@ async function sbUpsert(table, data){
   const r = await fetch(`${SB_URL}/rest/v1/${table}`, {method:'POST',headers:{...H,'Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify(data)});
   return await r.json();
 }
-
 async function uploadPhoto(file, filename){
   try {
     const r = await fetch(`${SB_URL}/storage/v1/object/selfies/${filename}`, {
@@ -269,7 +261,6 @@ async function uploadPhoto(file, filename){
     else { console.error('Photo upload failed:', r.status, await r.text()); return null; }
   } catch(e) { console.error('Photo upload error:', e); return null; }
 }
-
 // ═══════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════
@@ -288,11 +279,9 @@ function toast(m,t='ok',dur=3000){const el=document.getElementById('toast');el.c
 function openModal(t,b){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').innerHTML=b;document.getElementById('modal-bg').classList.remove('hidden')}
 function closeModal(){document.getElementById('modal-bg').classList.add('hidden')}
 function loading(el){el.innerHTML='<div class="loading">Loading</div>'}
-
 // ═══════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════
-
 // ── UPDATED HARDCODED PASSWORDS ──
 const HARDCODED_ADMINS = {
   'master': {id:'master', name:'Daniel Pagidipalli',    branch:'ALL',            role:'Master Admin',  pass:'Rebelz@Master#2026'},
@@ -300,7 +289,6 @@ const HARDCODED_ADMINS = {
   'HYD':   {id:'HYD',    name:'Branch Admin Hyderabad',  branch:'Hyderabad',     role:'Branch Admin',  pass:'Rebelz@Hyd#2026'},
   'VSK':   {id:'VSK',    name:'Branch Admin Visakhapatnam', branch:'Visakhapatnam', role:'Branch Admin', pass:'Rebelz@Vsk#2026'},
 };
-
 async function loadLoginDropdowns(){
   const statusEl = document.getElementById('login-status');
   if(statusEl) statusEl.textContent = 'Connecting to server...';
@@ -339,13 +327,11 @@ async function loadLoginDropdowns(){
     }
   }
 }
-
 function switchLT(t,btn){
   ['admin','regular','event'].forEach(x=>document.getElementById('lf-'+x).classList.toggle('hidden',x!==t));
   document.querySelectorAll('.ltab').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');
 }
-
 async function doAdminLogin(){
   const aid = document.getElementById('adm-sel').value;
   const pass = document.getElementById('adm-pass').value;
@@ -363,7 +349,6 @@ async function doAdminLogin(){
     toast('Wrong password','er');
   }
 }
-
 async function doStaffLogin(type){
   const sid = document.getElementById(type==='regular'?'rs-sel':'es-sel').value;
   const pin = document.getElementById(type==='regular'?'rs-pin':'es-pin').value;
@@ -375,14 +360,12 @@ async function doStaffLogin(type){
     launch();
   } else toast('Wrong PIN. Try again.','er');
 }
-
 function logout(){
   CU = null;
   document.getElementById('login-screen').classList.remove('hidden');
   document.getElementById('app').classList.add('hidden');
   loadLoginDropdowns();
 }
-
 function launch(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
@@ -397,7 +380,6 @@ function launch(){
     showPage(CU.type === 'regular' ? 'clockin' : 'markpresent');
   }
 }
-
 // ═══════════════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════════════
@@ -407,7 +389,7 @@ function buildNav(){
     {sep:'Overview'},{id:'dashboard',ic:'⬡',lbl:'Dashboard'},
     {sep:'Staff'},{id:'staffmgmt',ic:'◈',lbl:'Staff'},{id:'adminmgmt',ic:'◎',lbl:'Admins',master:true},
     {sep:'Events'},{id:'events',ic:'◆',lbl:'Events'},{id:'outsourced',ic:'⬢',lbl:'Outsourced'},
-    {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},{id:'clocklog',ic:'◷',lbl:'Clock Log'},
+    {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},{id:'clocklog',ic:'◷',lbl:'Clock Log'},{id:'manual',ic:'✎',lbl:'Manual Entry'},
     {sep:'Payroll'},{id:'monthrates',ic:'◉',lbl:'Monthly Rates'},{id:'salary',ic:'₹',lbl:'Salary Sheet'},
     {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
     {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
@@ -430,7 +412,6 @@ function buildNav(){
   }).join('');
   if(CU.userType === 'admin') updateApprovalBadge();
 }
-
 async function updateApprovalBadge(){
   const br = myBranch();
   const q = br ? `status=eq.pending&branch=eq.${br}` : 'status=eq.pending';
@@ -438,9 +419,7 @@ async function updateApprovalBadge(){
   const badge = document.getElementById('appr-badge');
   if(badge && Array.isArray(data) && data.length > 0) badge.textContent = data.length;
 }
-
 const MGR_ALLOWED = ['events','outsourced','approvals','reports','changepw'];
-
 function showPage(id){
   if(isManager() && !MGR_ALLOWED.includes(id)){
     toast('You do not have access to that section','er');
@@ -452,7 +431,7 @@ function showPage(id){
   const pages = {
     dashboard:pgDash, staffmgmt:pgStaff, adminmgmt:pgAdmins,
     events:pgEvents, outsourced:pgExt,
-    approvals:pgApprovals, clocklog:pgClockLog,
+    approvals:pgApprovals, clocklog:pgClockLog, manual:pgManual,
     monthrates:pgRates, salary:pgSalary,
     reports:pgReports,
     changepw:pgChangePw,
@@ -462,7 +441,6 @@ function showPage(id){
   if(pages[id]) pages[id](mc);
   document.getElementById('sidebar').classList.remove('open');
 }
-
 // ═══════════════════════════════════════════════════
 // SALARY HELPERS
 // ═══════════════════════════════════════════════════
@@ -474,7 +452,6 @@ async function getRate(staffId, monthKey){
   const s = await sbGet('staff', `id=eq.${staffId}&select=rate`);
   return (Array.isArray(s) && s.length > 0) ? s[0].rate || 0 : 0;
 }
-
 // ═══════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════
@@ -534,7 +511,6 @@ async function pgDash(el){
       </div>`;}).join('');
   }
 }
-
 // ═══════════════════════════════════════════════════
 // STAFF MANAGEMENT
 // ═══════════════════════════════════════════════════
@@ -566,7 +542,6 @@ async function pgStaff(el){
   </div>`;
   loadStaffTable();
 }
-
 async function loadStaffTable(){
   const fb = document.getElementById('f-br')?.value || myBranch() || '';
   const ft = document.getElementById('f-type')?.value || '';
@@ -588,7 +563,6 @@ async function loadStaffTable(){
     </div></td>
   </tr>`).join('')}</tbody></table>`;
 }
-
 async function addStaff(){
   const name = document.getElementById('ns-name').value.trim();
   const phone = document.getElementById('ns-phone').value.trim();
@@ -613,7 +587,6 @@ async function addStaff(){
     loadStaffTable(); loadLoginDropdowns();
   } else toast('Failed to add staff','er');
 }
-
 async function editStaff(id){
   const data = await sbGet('staff',`id=eq.${id}&select=*`);
   const s = Array.isArray(data) && data[0];
@@ -627,7 +600,6 @@ async function editStaff(id){
     </div>
     <div class="grow"><button class="btn btn-p" onclick="saveEditS('${id}','${s.type}')">Save</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
 }
-
 async function saveEditS(id, type){
   const name = document.getElementById('es-n').value.trim();
   const phone = document.getElementById('es-ph').value.trim();
@@ -638,14 +610,12 @@ async function saveEditS(id, type){
   await sbPatch('staff',`id=eq.${id}`,upd);
   closeModal(); toast('Staff updated ✓'); loadStaffTable(); loadLoginDropdowns();
 }
-
 async function rmStaff(id, name){
   if(confirm('Remove '+name+'? Their records will be kept.')){
     await sbPatch('staff',`id=eq.${id}`,{active:false});
     loadStaffTable(); toast('Removed');
   }
 }
-
 // ═══════════════════════════════════════════════════
 // ADMIN MANAGEMENT
 // ═══════════════════════════════════════════════════
@@ -680,7 +650,6 @@ async function pgAdmins(el){
     </tbody></table>
   </div>`;
 }
-
 async function addAdm(){
   const name=document.getElementById('na-n').value.trim();
   const br=document.getElementById('na-br').value;
@@ -702,11 +671,9 @@ async function addAdm(){
   pgAdmins(document.getElementById('mc'));
   loadLoginDropdowns();
 }
-
 async function rmAdm(id,name){
   if(confirm('Remove '+name+'?')){await sbDelete('admins',`id=eq.${id}`);pgAdmins(document.getElementById('mc'));loadLoginDropdowns();}
 }
-
 // ── MASTER: Reset any admin's password ──
 function resetAdmPw(id,name){
   openModal('Reset Password — '+name,`
@@ -716,7 +683,6 @@ function resetAdmPw(id,name){
     <p id="rap-msg" style="color:var(--red);font-size:12px;margin:4px 0 10px;min-height:14px"></p>
     <div class="grow"><button class="btn btn-p" onclick="doResetAdmPw('${id}','${name.replace(/'/g,"\\'")}')">Reset Password</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
 }
-
 async function doResetAdmPw(id,name){
   const nw=document.getElementById('rap-new').value.trim();
   const cf=document.getElementById('rap-cf').value.trim();
@@ -735,7 +701,6 @@ async function doResetAdmPw(id,name){
     msg.textContent='Reset failed. This account may only exist as a hardcoded fallback (not in the database).';
   }
 }
-
 // ═══════════════════════════════════════════════════
 // CHANGE PASSWORD (own account) — all admins & managers
 // ═══════════════════════════════════════════════════
@@ -766,27 +731,23 @@ async function pgChangePw(el){
     </div>
   </div>`;
 }
-
 async function changeMyPassword(){
   const cur=document.getElementById('cp-cur').value.trim();
   const nw=document.getElementById('cp-new').value.trim();
   const cf=document.getElementById('cp-cf').value.trim();
   const msg=document.getElementById('cp-msg');
   msg.style.color='var(--red)';
-
   if(CU.id==='master'){msg.textContent='Master password must be changed in the index.html file on GitHub.';return}
   if(!cur||!nw||!cf){msg.textContent='Please fill all three fields.';return}
   if(nw.length<6){msg.textContent='New password must be at least 6 characters.';return}
   if(nw!==cf){msg.textContent='New passwords do not match.';return}
   if(nw===cur){msg.textContent='New password must be different from the current one.';return}
-
   // Verify current password against the database
   const check=await sbGet('admins',`id=eq.${CU.id}&pass=eq.${encodeURIComponent(cur)}&select=id`);
   let currentOk = Array.isArray(check) && check.length>0;
   // Fallback: if account not yet in DB but matches hardcoded value
   if(!currentOk && HARDCODED_ADMINS[CU.id] && HARDCODED_ADMINS[CU.id].pass===cur){ currentOk=true; }
   if(!currentOk){msg.textContent='Current password is incorrect.';return}
-
   // Update in the database (upsert so hardcoded-only branch admins get a real DB row)
   const existing = await sbGet('admins',`id=eq.${CU.id}&select=id`);
   let res;
@@ -807,7 +768,6 @@ async function changeMyPassword(){
     msg.textContent='Update failed. Check your internet and try again.';
   }
 }
-
 // ═══════════════════════════════════════════════════
 // EVENTS
 // ═══════════════════════════════════════════════════
@@ -831,7 +791,6 @@ async function pgEvents(el){
   </div>`;
   loadEvtTable();
 }
-
 async function loadEvtTable(){
   const fb = document.getElementById('fe-br')?.value || myBranch() || '';
   let q = 'select=*';
@@ -858,7 +817,6 @@ async function loadEvtTable(){
     }
   });
 }
-
 async function addEvent(){
   const name=document.getElementById('ne-n').value.trim();
   const date=document.getElementById('ne-d').value;
@@ -870,7 +828,6 @@ async function addEvent(){
 }
 async function closeEvt(id){await sbPatch('events',`id=eq.${id}`,{status:'closed'});loadEvtTable();toast('Event closed')}
 async function delEvt(id,name){if(confirm('Delete '+name+'?')){await sbDelete('events',`id=eq.${id}`);loadEvtTable();}}
-
 // ═══════════════════════════════════════════════════
 // OUTSOURCED
 // ═══════════════════════════════════════════════════
@@ -901,7 +858,6 @@ async function pgExt(el){
   </div>`;
   loadExtTable();
 }
-
 async function loadExtTable(){
   const br = myBranch();
   const fp = document.getElementById('fe-paid')?.value||'';
@@ -923,7 +879,6 @@ async function loadExtTable(){
     <td><button class="btn bsm btn-d" onclick="delExt2('${o.id}')">✕</button></td>
   </tr>`).join('')}</tbody></table>`;
 }
-
 async function addExt(){
   const evId=document.getElementById('oe-ev').value;
   const name=document.getElementById('oe-n').value.trim();
@@ -939,7 +894,6 @@ async function addExt(){
 }
 async function togPaid(id,current){await sbPatch('outsourced',`id=eq.${id}`,{paid:!current});loadExtTable();toast('Updated')}
 async function delExt2(id){if(confirm('Remove?')){await sbDelete('outsourced',`id=eq.${id}`);loadExtTable();}}
-
 // ═══════════════════════════════════════════════════
 // APPROVALS
 // ═══════════════════════════════════════════════════
@@ -995,7 +949,6 @@ async function apprAll(){
   await sbPatch('attendance',q,{status:'approved'});
   toast('All approved ✓');pgApprovals(document.getElementById('mc'));
 }
-
 // ═══════════════════════════════════════════════════
 // CLOCK LOG
 // ═══════════════════════════════════════════════════
@@ -1015,7 +968,6 @@ async function pgClockLog(el){
   </div>`;
   loadClockTable();
 }
-
 async function loadClockTable(){
   const fb = document.getElementById('fcl-br')?.value||myBranch()||'';
   const fm = document.getElementById('fcl-mo')?.value||today().substring(0,7);
@@ -1047,7 +999,6 @@ async function loadClockTable(){
     </tr>`;
   }).join('')}</tbody></table>`;
 }
-
 function fixClock(id,name,inTime,date){
   openModal('Fix Entry — '+name,`
     <div class="info-box">${name} clocked in at <b>${inTime}</b> on <b>${date}</b> — no clock out.</div>
@@ -1065,7 +1016,167 @@ async function applyFix(id){
   await sbPatch('clocklog',`id=eq.${id}`,upd);
   closeModal();toast('Updated ✓');loadClockTable();
 }
-
+// ═══════════════════════════════════════════════════
+// MANUAL ENTRY (Master + Branch Admin only)
+// For no-signal / forgot-to-punch / event-added-late cases
+// Backdated attendance — admin-verified, auto-approved, no selfie/GPS
+// ═══════════════════════════════════════════════════
+let _mnES = {};   // event staff map:  id -> {id,name,role,branch}
+let _mnRS = {};   // regular staff map: id -> {id,name,branch}
+let _mnEV = {};   // events map:        id -> {id,name,date,branch}
+const MANUAL_REASONS = ['No network at venue','Forgot to punch','Event added after the day','Phone / app issue','Other'];
+async function pgManual(el){
+  if(CU.userType!=='admin' || isManager()){el.innerHTML='<div class="empty">Not available for this account.</div>';return}
+  loading(el);
+  const br = myBranch();
+  el.innerHTML = `
+  <div class="ptitle">Manual Entry</div>
+  <div class="psub">Add attendance for staff who genuinely worked but could not punch.</div>
+  <div class="info-box">
+    Use only for real cases — <b>no network at the venue</b>, <b>forgot to punch</b>, or the <b>event was uploaded after the day</b>.
+    Entries here are admin-verified, auto-approved, and count towards salary. Selfie / GPS is not needed.
+    ${br?'':' <b>Master Admin: choose the branch first.</b>'}
+  </div>
+  <div class="card">
+    <div class="frow-bar">
+      ${!br?`<div class="frow" style="margin:0;min-width:180px"><label>Branch</label><select id="mn-br" onchange="manualLoadLists()"><option value="">— select branch —</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select></div>`:''}
+      <div class="frow" style="margin:0;min-width:200px"><label>Entry For</label>
+        <select id="mn-type" onchange="manualToggle()">
+          <option value="event">Event Staff (mark present)</option>
+          <option value="regular">Regular Staff (clock day)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="mn-event-card">
+    <div class="ctitle">Event Staff — Manual Attendance</div>
+    <div class="fg2">
+      <div class="frow"><label>Staff</label><select id="mn-es-staff"><option value="">— select staff —</option></select></div>
+      <div class="frow"><label>Event</label><select id="mn-es-ev" onchange="manualFillDate()"><option value="">— select event —</option></select></div>
+    </div>
+    <div class="fg3">
+      <div class="frow"><label>Date</label><input type="date" id="mn-es-date" max="${today()}"></div>
+      <div class="frow"><label>Check-in Time</label><input type="time" id="mn-es-time" value="12:00"></div>
+      <div class="frow"><label>Reason</label><select id="mn-es-reason">${MANUAL_REASONS.map(r=>`<option>${r}</option>`).join('')}</select></div>
+    </div>
+    <div class="info-box" style="border-left-color:var(--amber)">Event not in the list? Create it first on the <b>Events</b> page, then come back here.</div>
+    <div class="grow"><button class="btn btn-p" onclick="submitManualEvent()">+ Add Attendance</button></div>
+  </div>
+  <div class="card hidden" id="mn-reg-card">
+    <div class="ctitle">Regular Staff — Manual Clock Day</div>
+    <div class="fg2">
+      <div class="frow"><label>Staff</label><select id="mn-rs-staff"><option value="">— select staff —</option></select></div>
+      <div class="frow"><label>Date</label><input type="date" id="mn-rs-date" max="${today()}"></div>
+    </div>
+    <div class="fg3">
+      <div class="frow"><label>Clock-In Time</label><input type="time" id="mn-rs-in" value="10:00"></div>
+      <div class="frow"><label>Clock-Out Time</label><input type="time" id="mn-rs-out" value="18:00"></div>
+      <div class="frow"><label>Reason</label><select id="mn-rs-reason">${MANUAL_REASONS.map(r=>`<option>${r}</option>`).join('')}</select></div>
+    </div>
+    <div class="grow"><button class="btn btn-p" onclick="submitManualClock()">+ Add Clock Record</button></div>
+  </div>
+  <div class="card"><div class="ctitle">Recently Added (this session)</div><div id="mn-recent"><div class="empty">Nothing added yet.</div></div></div>`;
+  manualToggle();
+  manualLoadLists();
+}
+function manualToggle(){
+  const t = document.getElementById('mn-type')?.value;
+  document.getElementById('mn-event-card')?.classList.toggle('hidden', t!=='event');
+  document.getElementById('mn-reg-card')?.classList.toggle('hidden', t!=='regular');
+}
+function manualFillDate(){
+  const ev = _mnEV[document.getElementById('mn-es-ev').value];
+  if(ev && ev.date){ document.getElementById('mn-es-date').value = ev.date; }
+}
+async function manualLoadLists(){
+  const br = document.getElementById('mn-br')?.value || myBranch() || '';
+  _mnES={}; _mnRS={}; _mnEV={};
+  const esSel=document.getElementById('mn-es-staff');
+  const rsSel=document.getElementById('mn-rs-staff');
+  const evSel=document.getElementById('mn-es-ev');
+  if(!br){
+    if(esSel) esSel.innerHTML='<option value="">— select branch first —</option>';
+    if(rsSel) rsSel.innerHTML='<option value="">— select branch first —</option>';
+    if(evSel) evSel.innerHTML='<option value="">— select branch first —</option>';
+    return;
+  }
+  const [es,rs,ev] = await Promise.all([
+    sbGet('staff',`type=eq.event&active=eq.true&branch=eq.${br}&select=id,name,role,branch&order=name.asc`),
+    sbGet('staff',`type=eq.regular&active=eq.true&branch=eq.${br}&select=id,name,branch&order=name.asc`),
+    sbGet('events',`branch=eq.${br}&select=id,name,date,branch&order=date.desc&limit=120`)
+  ]);
+  if(esSel){
+    esSel.innerHTML='<option value="">— select staff —</option>';
+    (Array.isArray(es)?es:[]).forEach(s=>{_mnES[s.id]=s; esSel.innerHTML+=`<option value="${s.id}">${s.name} (${s.id})</option>`;});
+  }
+  if(rsSel){
+    rsSel.innerHTML='<option value="">— select staff —</option>';
+    (Array.isArray(rs)?rs:[]).forEach(s=>{_mnRS[s.id]=s; rsSel.innerHTML+=`<option value="${s.id}">${s.name} (${s.id})</option>`;});
+  }
+  if(evSel){
+    evSel.innerHTML='<option value="">— select event —</option>';
+    (Array.isArray(ev)?ev:[]).forEach(e=>{_mnEV[e.id]=e; evSel.innerHTML+=`<option value="${e.id}">${e.name} · ${e.date}</option>`;});
+  }
+}
+function mnAddRecent(html){
+  const box=document.getElementById('mn-recent');
+  if(!box) return;
+  const emp=box.querySelector('.empty');
+  if(emp) box.innerHTML='';
+  box.insertAdjacentHTML('afterbegin',`<div class="row-item"><span class="b bgold">Manual</span><div style="flex:1;font-size:13px">${html}</div></div>`);
+}
+async function submitManualEvent(){
+  const sid=document.getElementById('mn-es-staff').value;
+  const evId=document.getElementById('mn-es-ev').value;
+  const date=document.getElementById('mn-es-date').value;
+  const time=document.getElementById('mn-es-time').value||'12:00';
+  const reason=document.getElementById('mn-es-reason').value;
+  if(!sid){toast('Select staff','er');return}
+  if(!evId){toast('Select event','er');return}
+  if(!date){toast('Select date','er');return}
+  const st=_mnES[sid];
+  const brVal = st?.branch || document.getElementById('mn-br')?.value || myBranch() || '';
+  const dup=await sbGet('attendance',`staff_id=eq.${sid}&event_id=eq.${evId}&date=eq.${date}&select=id`);
+  if(Array.isArray(dup)&&dup.length){toast('Entry already exists for this staff, event & date','er');return}
+  toast('Saving...','info',2000);
+  const res=await sbPost('attendance',{
+    id:'ATT-'+uid(),
+    staff_id:sid, event_id:evId, date, time, role:st?.role||'',
+    status:'approved', branch:brVal,
+    photo_url:'', gps_lat:'', gps_lng:'', gps_acc:'MANUAL'
+  });
+  if(Array.isArray(res)&&res.length>0){
+    const evName=_mnEV[evId]?.name||evId;
+    toast('Manual attendance added ✓');
+    mnAddRecent(`${st?.name||sid} · ${evName} · ${date} <span style="color:var(--muted);font-size:11px">(${reason})</span>`);
+    document.getElementById('mn-es-staff').value='';
+  } else toast('Failed to add. Try again.','er');
+}
+async function submitManualClock(){
+  const sid=document.getElementById('mn-rs-staff').value;
+  const date=document.getElementById('mn-rs-date').value;
+  const inT=document.getElementById('mn-rs-in').value;
+  const outT=document.getElementById('mn-rs-out').value;
+  const reason=document.getElementById('mn-rs-reason').value;
+  if(!sid){toast('Select staff','er');return}
+  if(!date){toast('Select date','er');return}
+  if(!inT||!outT){toast('Enter both in and out time','er');return}
+  const st=_mnRS[sid];
+  const brVal = st?.branch || document.getElementById('mn-br')?.value || myBranch() || '';
+  const dup=await sbGet('clocklog',`staff_id=eq.${sid}&date=eq.${date}&select=id`);
+  if(Array.isArray(dup)&&dup.length){toast('A record already exists for this date — edit it in Clock Log','er');return}
+  toast('Saving...','info',2000);
+  const res=await sbPost('clocklog',{
+    id:'CLK-'+uid(),
+    staff_id:sid, date, in_time:inT, out_time:outT,
+    status:'complete', branch:brVal, admin_fixed:true
+  });
+  if(Array.isArray(res)&&res.length>0){
+    toast('Manual clock record added ✓');
+    mnAddRecent(`${st?.name||sid} · ${date} · ${inT}–${outT} <span style="color:var(--muted);font-size:11px">(${reason})</span>`);
+    document.getElementById('mn-rs-staff').value='';
+  } else toast('Failed to add. Try again.','er');
+}
 // ═══════════════════════════════════════════════════
 // MONTHLY RATES
 // ═══════════════════════════════════════════════════
@@ -1080,7 +1191,6 @@ async function pgRates(el){
   <div class="grow"><button class="btn btn-p" onclick="saveRates()">💾 Save Rates for ${mk}</button></div>`;
   loadRatesTable(br||'');
 }
-
 async function loadRatesTable(fb){
   const mk = mkkey(today());
   let q = 'type=eq.event&active=eq.true&select=*';
@@ -1106,7 +1216,6 @@ async function loadRatesTable(fb){
     </div>`).join('')}
     </div>`).join('');
 }
-
 async function saveRates(){
   const mk = mkkey(today());
   const staff = await sbGet('staff','type=eq.event&active=eq.true&select=id');
@@ -1118,7 +1227,6 @@ async function saveRates(){
   await sbUpsert('month_rates',updates);
   toast('Rates saved for '+mk+' ✓');
 }
-
 // ═══════════════════════════════════════════════════
 // SALARY SHEET
 // ═══════════════════════════════════════════════════
@@ -1138,7 +1246,6 @@ async function pgSalary(el){
   <div id="sal-wrap"><div class="loading">Loading</div></div>`;
   loadSalary();
 }
-
 async function loadSalary(){
   const mk = document.getElementById('ss-mo').value;
   const fb = document.getElementById('ss-br')?.value||myBranch()||'';
@@ -1233,7 +1340,6 @@ async function loadSalary(){
   </tbody></table></div></div>
   ${!locked?`<div class="grow"><button class="btn btn-p" onclick="lockSal()">🔒 Finalize & Lock</button><span style="font-size:12px;color:var(--muted)">No changes after lock</span></div>`:'<div class="grow"><span class="b bg">🔒 Finalized and locked</span></div>'}`;
 }
-
 async function lockSal(){
   const mk = document.getElementById('ss-mo').value;
   const fb = document.getElementById('ss-br')?.value||myBranch()||'ALL';
@@ -1242,13 +1348,11 @@ async function lockSal(){
     toast('Locked ✓');loadSalary();
   }
 }
-
 // ═══════════════════════════════════════════════════
 // REPORTS
 // ═══════════════════════════════════════════════════
 async function pgReports(el){
   loading(el);
-
   // ── Build last 12 months list ──
   const last12 = [];
   const now = new Date();
@@ -1256,7 +1360,6 @@ async function pgReports(el){
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     last12.push(mkkey(d.toISOString().split('T')[0]));
   }
-
   // ── Fetch months that actually have data ──
   const br = myBranch();
   const [attMonths, evtMonths, clockMonths] = await Promise.all([
@@ -1264,7 +1367,6 @@ async function pgReports(el){
     sbGet('events',     (br?`branch=eq.${br}&`:'') + 'select=date'),
     sbGet('clocklog',   (br?`branch=eq.${br}&`:'') + 'select=date'),
   ]);
-
   // Build a Set of month keys that have real data
   const hasData = new Set();
   const addMonths = (rows) => {
@@ -1273,12 +1375,10 @@ async function pgReports(el){
   addMonths(attMonths);
   addMonths(evtMonths);
   addMonths(clockMonths);
-
   // ── Also include any months from data older than 12 months ──
   const allDataMonths = new Set([...hasData]);
   last12.forEach(m => allDataMonths.delete(m)); // remove ones already in last12
   const extraMonths = [...allDataMonths].sort().reverse(); // older months
-
   const allCards = [
     {t:'Daily Report',  icon:'📅', sub:"Today's clock log + event attendance", type:'daily'},
     {t:'Monthly Salary',icon:'📆', sub:'Full salary sheet with all staff',      type:'monthly'},
@@ -1286,22 +1386,18 @@ async function pgReports(el){
     {t:'Staff Master',  icon:'👥', sub:'All staff, roles, branches, rates',     type:'staff'},
   ];
   const cards = isManager() ? allCards.filter(c=>c.type==='events') : allCards;
-
   // Build dropdown options — last 12 months + any extra older months
   const buildOptions = (list) => list.map(m => {
     const hasD = hasData.has(m);
     return `<option value="${m}" ${hasD?'':'style="color:var(--muted2)"'}>${m}${hasD?' ●':' ○'}</option>`;
   }).join('');
-
   el.innerHTML = `
   <div class="ptitle">Excel Reports</div>
   <div class="psub">Download .xlsx reports — opens in Excel or Google Sheets.</div>
-
   <div class="info-box" style="margin-bottom:1rem">
     <b>● = Has data</b> &nbsp;|&nbsp; <b>○ = No data this month</b><br>
     All 12 months shown. Select any month and download.
   </div>
-
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1.25rem;align-items:center">
     <div>
       <label style="margin-bottom:4px">Select Month</label>
@@ -1321,7 +1417,6 @@ async function pgReports(el){
       </select>
     </div>`:''}
   </div>
-
   <div class="report-grid">
     ${cards.map(r=>`
     <div class="report-card" onclick="doExportReport('${r.type}')">
@@ -1330,13 +1425,11 @@ async function pgReports(el){
       <div class="rc-sub">${r.sub}</div>
     </div>`).join('')}
   </div>
-
   <div class="info-box">
     📌 All reports download as .xlsx files.<br>
     Selfie photos noted as YES/NO. GPS coordinates included.
   </div>`;
 }
-
 async function doExportReport(type){
   if(isManager() && type!=='events'){toast('You can only download the Event Report','er');return}
   const mo = document.getElementById('rpt-mo')?.value||mkkey(today());
@@ -1402,9 +1495,7 @@ async function doExportReport(type){
   XLSX.writeFile(wb,`Rebelz_${type}_${(br||'All').replace(/\s/g,'_')}_${mo.replace(' ','_')}.xlsx`);
   toast('Report downloaded ✓');
 }
-
 async function exportSalaryExcel(){await doExportReport('monthly');}
-
 // ═══════════════════════════════════════════════════
 // CLOCK IN / OUT (Regular Staff)
 // ═══════════════════════════════════════════════════
@@ -1436,7 +1527,6 @@ async function pgClockIn(el){
   </div>`;
   setInterval(()=>{const t=document.getElementById('lt');if(t)t.textContent=nowtime();},30000);
 }
-
 async function doClock(type, eid){
   const t = nowtime();
   const d = today();
@@ -1448,7 +1538,6 @@ async function doClock(type, eid){
     toast('Clocked out at '+t+' ✓');pgClockIn(document.getElementById('mc'));
   }
 }
-
 async function pgMyAtt(el){
   loading(el);
   const mk = mkkey(today());
@@ -1477,7 +1566,6 @@ async function pgMyAtt(el){
     return `<tr><td>${c.date}</td><td>${day}</td><td style="color:var(--green)">${c.in_time||'—'}</td><td style="color:var(--amber)">${c.out_time||'—'}</td><td>${hrs}</td><td><span class="b ${c.status==='complete'?'bg':c.status==='incomplete'?'ba':'br'}">${c.status}</span></td></tr>`;
   }).join('')||'<tr><td colspan="6" class="empty">No records</td></tr>'}</tbody></table></div></div>`;
 }
-
 // ═══════════════════════════════════════════════════
 // MARK PRESENT (Event Staff)
 // ═══════════════════════════════════════════════════
@@ -1541,7 +1629,6 @@ async function pgMark(el){
     <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Selfie + GPS required · Reviewed by branch admin</div>
   </div>`;
 }
-
 function startCam(){
   document.getElementById('cam-ph').style.display='none';
   document.getElementById('cam-ac').style.display='block';
@@ -1582,7 +1669,6 @@ function getGPS(){
     document.getElementById('gps-link').href=`https://www.google.com/maps?q=${lat},${lng}`;
   },()=>{s.innerHTML='<span style="color:var(--red)">Failed. Allow location access.</span>';btn.textContent='Retry';btn.disabled=false;},{timeout:15000,enableHighAccuracy:true});
 }
-
 async function submitMark(){
   const ev=document.getElementById('mk-ev').value;
   const role=CU.role;
@@ -1608,7 +1694,6 @@ async function submitMark(){
     pgMark(document.getElementById('mc'));
   } else toast('Submission failed. Try again.','er');
 }
-
 async function pgMyRecords(el){
   loading(el);
   const mk = mkkey(today());
@@ -1629,7 +1714,6 @@ async function pgMyRecords(el){
     <td><span class="b ${a.status==='approved'?'bg':a.status==='rejected'?'br':'ba'}">${a.status}</span></td>
   </tr>`).join('')||'<tr><td colspan="6" class="empty">No records yet</td></tr>'}</tbody></table></div></div>`;
 }
-
 async function pgMyPay(el){
   loading(el);
   const s = CU;
@@ -1680,7 +1764,6 @@ async function pgMyPay(el){
     </div>`;
   }
 }
-
 // ═══════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════
