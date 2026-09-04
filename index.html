@@ -1233,7 +1233,7 @@ async function saveRates(){
 async function pgSalary(el){
   loading(el);
   const br = myBranch();
-  const attMonths = await sbGet('attendance','select=date&order=date.asc&limit=100');
+  const attMonths = await sbGet('attendance','select=date&order=date.desc&limit=100000');
   const months = [...new Set((Array.isArray(attMonths)?attMonths:[]).map(a=>mkkey(a.date)))];
   if(!months.includes(mkkey(today()))) months.unshift(mkkey(today()));
   el.innerHTML = `<div class="ptitle">Salary Sheet</div><div class="psub">Auto-calculated monthly payroll.</div>
