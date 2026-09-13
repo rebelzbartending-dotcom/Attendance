@@ -302,7 +302,10 @@ function loading(el){el.innerHTML='<div class="loading">Loading</div>'}
 // MY PROFILE (Aadhaar + bank details, via secure staff-kyc Edge Function)
 // ═══════════════════════════════════════════════════
 async function callKyc(action, extra){
-  const body = Object.assign({action, staff_id: CU.id, pin: CU.pin}, extra||{});
+  const body = {action};
+  if(CU && CU.userType==='admin'){ body.admin_id=CU.id; body.admin_pass=CU.pass; }
+  else { body.staff_id=CU.id; body.pin=CU.pin; }
+  Object.assign(body, extra||{});
   try{
     const r = await fetch(`${SB_URL}/functions/v1/staff-kyc`, {
       method:'POST',
@@ -313,24 +316,61 @@ async function callKyc(action, extra){
     return {ok:r.ok, status:r.status, data:j};
   }catch(e){ return {ok:false, status:0, data:{error:'Network error. Check internet and try again.'}}; }
 }
+// staff picks/takes a photo -> compress to a square JPEG (base64) for upload
+window._kpPhoto = null;
+function kpPickPhoto(input){
+  const file = input.files && input.files[0]; if(!file) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const sz=400, c=document.createElement('canvas'); c.width=sz; c.height=sz;
+      const ctx=c.getContext('2d'); const s=Math.min(img.width,img.height);
+      ctx.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,sz,sz);
+      const dataUrl=c.toDataURL('image/jpeg',0.82);
+      window._kpPhoto=dataUrl;
+      const pv=document.getElementById('kp-photo-img');
+      if(pv){ pv.src=dataUrl; pv.style.display='block'; }
+      const ph=document.getElementById('kp-photo-ph'); if(ph) ph.style.display='none';
+    };
+    img.src = e.target.result;
+  };
+  rd.readAsDataURL(file);
+}
 async function pgMyProfile(el){
   loading(el);
+  window._kpPhoto = null;
   const res = await callKyc('get');
   const k = (res.ok && res.data && res.data.kyc) ? res.data.kyc : {};
+  const photo = res.data && res.data.photo_url ? res.data.photo_url : null;
   const v = x => (x===null||x===undefined) ? '' : String(x);
   el.innerHTML = `
   <div class="ptitle">My Profile</div>
-  <div class="psub">Add your Aadhaar and bank details for salary records. Stored securely — only you can see or edit your own details.</div>
+  <div class="psub">Add your photo, Aadhaar, bank and emergency details for records. Stored securely — only you and the admin can see them.</div>
   <div style="max-width:460px">
     <div class="card">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
-        <div class="av">${ini(CU.name)}</div>
-        <div><div style="font-weight:600">${CU.name}</div><div style="font-size:12px;color:var(--muted)">${CU.role||''} · <code>${CU.id}</code></div></div>
+
+      <div style="text-align:center;margin-bottom:1rem">
+        <div style="position:relative;display:inline-block">
+          <img id="kp-photo-img" src="${photo||''}" style="width:104px;height:104px;border-radius:18px;object-fit:cover;border:2px solid var(--gold);display:${photo?'block':'none'}">
+          <div id="kp-photo-ph" style="width:104px;height:104px;border-radius:18px;background:var(--dk4);border:2px dashed var(--border2);display:${photo?'none':'flex'};align-items:center;justify-content:center;font-size:30px;color:var(--muted)">👤</div>
+        </div>
+        <div style="margin-top:8px">
+          <label for="kp-photo-file" style="display:inline-block;cursor:pointer;font-size:12px;font-weight:600;color:var(--gold);border:1px solid var(--gold);border-radius:9px;padding:6px 13px;text-transform:none;letter-spacing:0">📷 ${photo?'Change photo':'Add photo'}</label>
+          <input id="kp-photo-file" type="file" accept="image/*" style="display:none" onchange="kpPickPhoto(this)">
+        </div>
+        <div style="font-weight:600;margin-top:9px">${CU.name}</div>
+        <div style="font-size:12px;color:var(--muted)">${CU.role||''} · <code>${CU.id}</code></div>
       </div>
 
       <div class="ctitle">Personal</div>
       <div class="frow"><label>Full Name (as per Aadhaar)</label><input id="kp-name" value="${v(k.full_name)||CU.name}" placeholder="Full name"></div>
       <div class="frow"><label>Aadhaar Number</label><input id="kp-aadhaar" value="${v(k.aadhaar)}" placeholder="12-digit Aadhaar" inputmode="numeric" maxlength="14"></div>
+
+      <div class="ctitle" style="margin-top:1rem">Emergency Contact</div>
+      <div class="frow"><label>Emergency Phone</label><input id="kp-ephone" value="${v(k.emergency_phone)}" placeholder="e.g. 98765 43210" inputmode="tel"></div>
+      <div class="frow"><label>Contact Person Name</label><input id="kp-ename" value="${v(k.emergency_name)}" placeholder="e.g. Lakshmi"></div>
+      <div class="frow"><label>Relationship</label><input id="kp-erel" value="${v(k.emergency_relation)}" placeholder="e.g. Mother / Brother / Spouse"></div>
 
       <div class="ctitle" style="margin-top:1rem">Bank Account</div>
       <div class="frow"><label>Account Holder Name</label><input id="kp-holder" value="${v(k.account_holder)}" placeholder="Name printed on the bank account"></div>
@@ -340,10 +380,16 @@ async function pgMyProfile(el){
       <div class="frow"><label>Bank Name</label><input id="kp-bank" value="${v(k.bank_name)}" placeholder="e.g. HDFC Bank"></div>
 
       <div id="kp-verify" style="font-size:12px;min-height:16px;margin:2px 0 8px">${k.account_verified?`✓ <span style="color:var(--green)">Account verified — ${v(k.verified_name)}</span>`:''}</div>
+
+      <label style="display:flex;gap:9px;align-items:flex-start;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--text);font-size:12.5px;margin:6px 0 12px">
+        <input type="checkbox" id="kp-consent" ${k.consent?'checked':''} style="width:auto;margin-top:2px">
+        <span>I confirm that all the details above are true and given by me.</span>
+      </label>
+
       <p id="kp-msg" style="font-size:12px;margin:2px 0 10px;min-height:14px;color:var(--red)"></p>
       <button class="btn btn-p" id="kp-save" onclick="saveMyProfile()">Save My Details</button>
     </div>
-    <div class="info-box">🔒 Aadhaar and bank details are kept in a locked table. They are never shown on the public app and cannot be seen by other staff.</div>
+    <div class="info-box">🔒 Your photo, Aadhaar and bank details are kept in a locked, private store. Other staff can never see them.</div>
   </div>`;
 }
 async function saveMyProfile(){
@@ -353,24 +399,91 @@ async function saveMyProfile(){
   const aadhaar = g('kp-aadhaar').replace(/\s/g,'');
   const acc = g('kp-acc'), acc2 = g('kp-acc2');
   const ifsc = g('kp-ifsc').toUpperCase();
+  const consent = document.getElementById('kp-consent').checked;
   if(aadhaar && !/^\d{12}$/.test(aadhaar)){ msg.textContent='Aadhaar must be exactly 12 digits.'; return; }
   if(acc && acc!==acc2){ msg.textContent='Account numbers do not match.'; return; }
   if(ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)){ msg.textContent='IFSC looks wrong (example: HDFC0001234).'; return; }
+  if(!consent){ msg.textContent='Please tick the confirmation box before saving.'; return; }
   const btn = document.getElementById('kp-save');
   btn.disabled=true; const old=btn.textContent; btn.textContent='Saving...';
-  const res = await callKyc('save', {
+  const payload = {
     full_name:g('kp-name'), aadhaar, account_holder:g('kp-holder'),
-    bank_account:acc, ifsc, bank_name:g('kp-bank')
-  });
+    bank_account:acc, ifsc, bank_name:g('kp-bank'),
+    emergency_phone:g('kp-ephone'), emergency_name:g('kp-ename'), emergency_relation:g('kp-erel'),
+    consent:true
+  };
+  if(window._kpPhoto) payload.photo_b64 = window._kpPhoto;
+  const res = await callKyc('save', payload);
   btn.disabled=false; btn.textContent=old;
   if(res.ok && res.data && res.data.ok){
     toast('Your details are saved','ok');
+    window._kpPhoto=null;
     const vd = document.getElementById('kp-verify');
     if(res.data.account_verified){ vd.innerHTML=`✓ <span style="color:var(--green)">Account verified — ${res.data.verified_name||''}</span>`; }
     msg.style.color='var(--green)'; msg.textContent='Saved successfully.';
   } else {
     msg.textContent = (res.data && res.data.error) ? res.data.error : 'Could not save. Check your details and try again.';
   }
+}
+// ── ADMIN: view an employee's full KYC profile ──
+function kpMask(s, keep){ s=String(s||''); if(s.length<=keep) return s; return '•'.repeat(Math.max(0,s.length-keep))+s.slice(-keep); }
+function kpRevealTag(id, full){
+  const f=String(full||''); if(!f) return '—';
+  return `<span id="${id}" data-full="${f}">${kpMask(f,4)}</span> <span class="reveal" style="font-size:10px;color:var(--gold);border:1px solid var(--border2);border-radius:6px;padding:2px 7px;cursor:pointer" onclick="const e=document.getElementById('${id}');e.textContent=e.dataset.full;this.remove()">Reveal</span>`;
+}
+async function viewStaffKyc(id){
+  const s = (window.STAFF_BY_ID && window.STAFF_BY_ID[id]) || {id, name:id, role:'', branch:''};
+  openModal(s.name || 'Employee Details', '<div class="loading">Loading</div>');
+  const res = await callKyc('admin_get', {target_id:id});
+  const body = document.getElementById('modal-body');
+  const k = (res.ok && res.data && res.data.kyc) ? res.data.kyc : null;
+  const photo = res.data && res.data.photo_url ? res.data.photo_url : null;
+  if(!res.ok){ body.innerHTML=`<div class="empty">Could not load (${(res.data&&res.data.error)||'error'}).</div>`; return; }
+  const av = photo
+    ? `<img src="${photo}" style="width:92px;height:92px;border-radius:16px;object-fit:cover;border:2px solid var(--gold)">`
+    : `<div class="av" style="width:92px;height:92px;border-radius:16px;font-size:26px">${ini(s.name)}</div>`;
+  if(!k){
+    body.innerHTML = `
+    <div style="display:flex;gap:15px;align-items:center;margin-bottom:14px">${av}
+      <div><div style="font-family:var(--ff);font-size:20px">${s.name}</div>
+      <div style="font-size:12px;color:var(--muted)">${s.role||''} · <code>${s.id}</code> · ${s.branch||''}</div></div></div>
+    <div class="empty">This staff member hasn't submitted their details yet.</div>`;
+    return;
+  }
+  const val = x => (x===null||x===undefined||x==='') ? '—' : String(x);
+  const F = (lbl, html) => `<div style="margin-bottom:13px"><div style="font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted)">${lbl}</div><div style="font-size:15px;margin-top:2px">${html}</div></div>`;
+  body.innerHTML = `
+  <div style="display:flex;gap:15px;align-items:center;margin-bottom:16px">${av}
+    <div>
+      <div style="font-family:var(--ff);font-size:21px;line-height:1.1">${s.name}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">${s.role||''} · <code>${s.id}</code> · 📍 ${s.branch||''}</div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:20px;background:var(--gold-dim);color:var(--gold-l)">🪪 Details on file</span>
+        ${k.account_verified?`<span style="font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:20px;background:var(--green-dim);color:var(--green)">✓ Bank verified</span>`:''}
+      </div>
+    </div>
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:14px">
+    <div class="ctitle" style="font-size:12px;color:var(--gold-l)">👤 Personal</div>
+    ${F('Full Name (Aadhaar)', val(k.full_name))}
+    ${F('Aadhaar Number', kpRevealTag('mv-aad', k.aadhaar))}
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
+    <div class="ctitle" style="font-size:12px;color:var(--gold-l)">📞 Emergency Contact</div>
+    ${F('Phone', val(k.emergency_phone))}
+    ${F('Contact Person', val(k.emergency_name)+ (k.emergency_relation?` <span style="color:var(--muted);font-size:12px">(${k.emergency_relation})</span>`:''))}
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:8px">
+    <div class="ctitle" style="font-size:12px;color:var(--gold-l)">🏦 Bank Account</div>
+    ${F('Account Holder', val(k.account_holder))}
+    ${F('Account Number', kpRevealTag('mv-acc', k.bank_account))}
+    ${F('IFSC', val(k.ifsc))}
+    ${F('Bank', val(k.bank_name) + (k.account_verified&&k.verified_name?` <span style="color:var(--green);font-size:12px">✓ ${k.verified_name}</span>`:''))}
+  </div>
+  <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:12px;font-size:12px;color:var(--muted)">
+    ${k.consent?`✅ <b style="color:var(--green)">Confirmed genuine by staff</b>`:'⚠ Not confirmed by staff'}
+    ${k.consent_at?` · ${new Date(k.consent_at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}`:''}
+  </div>`;
 }
 // ═══════════════════════════════════════════════════
 // AUTH
@@ -686,13 +799,22 @@ async function loadStaffTable(){
   const data = await sbGet('staff', q);
   const el = document.getElementById('staff-t');
   if(!Array.isArray(data) || !data.length){el.innerHTML='<div class="empty">No staff found.</div>';return}
-  el.innerHTML = `<table><thead><tr><th>Name</th><th>ID</th><th>Role</th><th>Branch</th><th>Type</th><th>Pay</th><th>Actions</th></tr></thead><tbody>
+  window.STAFF_BY_ID = {}; data.forEach(s=>window.STAFF_BY_ID[s.id]=s);
+  const KM = {};
+  const kr = await callKyc('admin_list');
+  if(kr.ok && kr.data && Array.isArray(kr.data.rows)) kr.data.rows.forEach(r=>KM[r.staff_id]=r);
+  const chip = id => KM[id]
+    ? `<span class="b bg" style="font-size:10px">✓ On file</span>`
+    : `<span class="b" style="font-size:10px;background:var(--amber-dim);color:var(--amber)">⏳ Pending</span>`;
+  el.innerHTML = `<table><thead><tr><th>Name</th><th>ID</th><th>Role</th><th>Branch</th><th>Type</th><th>Pay</th><th>KYC</th><th>Actions</th></tr></thead><tbody>
   ${data.map(s=>`<tr>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="av ${s.type==='regular'?'av-r':'av-e'}">${ini(s.name)}</div>${s.name}</div></td>
     <td><code>${s.id}</code></td><td>${s.role}</td><td>${s.branch}</td>
     <td><span class="b ${s.type==='regular'?'bg':'bb'}">${s.type==='regular'?'Regular':'Event'}</span></td>
     <td>${s.type==='regular'?'₹'+(s.salary||0).toLocaleString()+'/mo':'₹'+(s.rate||0).toLocaleString()+'/evt'}</td>
+    <td>${chip(s.id)}</td>
     <td><div style="display:flex;gap:5px">
+      <button class="btn bsm" style="background:var(--gold);color:var(--dk)" onclick="viewStaffKyc('${s.id}')">👁 View</button>
       <button class="btn bsm btn-b" onclick="editStaff('${s.id}')">Edit</button>
       <button class="btn bsm btn-d" onclick="rmStaff('${s.id}','${s.name}')">Remove</button>
     </div></td>
