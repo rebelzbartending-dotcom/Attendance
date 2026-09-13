@@ -6,6 +6,7 @@
 <title>Rebelz Attendance System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 :root{
   --gold:#E3B85F;--gold-l:#F4D183;--gold-dim:rgba(227,184,95,.14);
@@ -1519,6 +1520,7 @@ async function doExportReport(type){
   if(isManager() && type!=='events'){toast('You can only download the Event Report','er');return}
   const mo = document.getElementById('rpt-mo')?.value||mkkey(today());
   const br = document.getElementById('rpt-br')?.value||myBranch()||'';
+  if(type==='monthly'){ return exportMonthlyRich(mo,br); }
   toast('Preparing report...','info');
   const wb = XLSX.utils.book_new();
   if(type==='daily'||type==='monthly'){
@@ -1583,6 +1585,283 @@ async function doExportReport(type){
   toast('Report downloaded ✓');
 }
 async function exportSalaryExcel(){await doExportReport('monthly');}
+
+// ═══════════════════════════════════════════════════
+// RICH MONTHLY PAYROLL REPORT (ExcelJS — styling + live formulas)
+// ═══════════════════════════════════════════════════
+async function exportMonthlyRich(mo,br){
+  if(typeof ExcelJS==='undefined'){toast('Report engine still loading — try again in a moment','er');return;}
+  toast('Preparing report...','info');
+  try{
+    const mi=new Date(mo+' 1').getMonth();
+    const yi=parseInt(mo.split(' ').pop());
+    const wd=getWorkDays(yi,mi);
+    const m2=String(mi+1).padStart(2,'0');
+    const ld=String(new Date(yi,mi+1,0).getDate()).padStart(2,'0');
+    let staffQ='active=eq.true&select=*'; if(br)staffQ+=`&branch=eq.${br}`;
+    const [staffData,attData,clockData,extData,ratesData,paidData]=await Promise.all([
+      sbGet('staff',staffQ),
+      sbGet('attendance',`status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
+      sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
+      sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
+      sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`),
+      sbGet('salary_paid',`month_key=eq.${encodeURIComponent(mo)}${br?`&branch=eq.${br}`:''}&select=*`)
+    ]);
+    const staff=Array.isArray(staffData)?staffData:[];
+    const att=Array.isArray(attData)?attData:[];
+    const clocks=Array.isArray(clockData)?clockData:[];
+    const ext=Array.isArray(extData)?extData:[];
+    const paidMap={}; if(Array.isArray(paidData))paidData.forEach(p=>paidMap[p.staff_id]=p.paid===true);
+    const rMap={}; if(Array.isArray(ratesData))ratesData.forEach(r=>rMap[r.staff_id]=r.rate);
+    const nameById={}, rateById={};
+    staff.forEach(s=>{nameById[s.id]=s.name; rateById[s.id]=(rMap[s.id]!==undefined?rMap[s.id]:(s.type==='event'?s.rate:s.salary))||0;});
+    const regular=staff.filter(s=>s.type==='regular').map(s=>({
+      id:s.id,name:s.name,role:s.role,branch:s.branch,salary:s.salary||0,
+      workdays:wd, worked:clocks.filter(c=>c.staff_id===s.id).length,
+      status:paidMap[s.id]?'PAID':'UNPAID'
+    }));
+    const event=staff.filter(s=>s.type==='event').map(s=>({
+      id:s.id,name:s.name,role:s.role,branch:s.branch,
+      rate:(rMap[s.id]!==undefined?rMap[s.id]:s.rate)||0,
+      events:att.filter(a=>a.staff_id===s.id).length,
+      status:paidMap[s.id]?'PAID':'UNPAID'
+    }));
+    const outsourced=ext.map(o=>({id:o.id,name:o.name,role:o.role,branch:o.branch,date:o.date,amount:o.amount||0,paid:o.paid?'PAID':'UNPAID'}));
+    const attendance=att.map(a=>({sid:a.staff_id,date:a.date,time:a.time||'',role:a.role,branch:a.branch,status:a.status,lat:a.gps_lat,lng:a.gps_lng,photo:a.photo_url?'YES':'NO',name:nameById[a.staff_id]||'',rate:(a.staff_id in rateById?rateById[a.staff_id]:0)}));
+    const input={
+      monthLabel:mo, branch:br||'',
+      generated:'Generated: '+new Date().toLocaleString('en-GB',{day:'numeric',month:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})+'  ·  Figures update automatically from Regular Staff, Event Staff and Outsourced sheets',
+      assumptions:{workdays:wd, sundays:getSundays(yi,mi), paidoffs:4},
+      regular, event, outsourced, attendance
+    };
+    const wb=RebelzReport.buildWorkbook(ExcelJS,input);
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=`Rebelz_Monthly_${(br||'All').replace(/\s/g,'_')}_${mo.replace(' ','_')}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    toast('Report downloaded ✓');
+  }catch(e){ console.error(e); toast('Report failed: '+(e.message||e),'er'); }
+}
+
+/* ===== Rebelz Monthly Payroll workbook generator (hybrid: styling + live
+   formulas for payroll math; dynamic-array regions baked as static values) ===== */
+(function (root) {
+  const NAVY='FF1F3864', BLUE1='FF2E5496', BLUE2='FF2E75B6', GREEN='FF2E7D32',
+        RED='FFC00000', PURPLE='FF7030A0', HDRBLUE='FFD9E1F2', KPIGREY='FFF2F2F2',
+        YELLOW='FFFFF2CC', INPUT='FFFFF9E6', BLUEFONT='FF0000FF', GREY='FF808080',
+        GREY2='FF595959', WHITE='FFFFFFFF', PURPLEHDR='FFE4D7F2';
+  const RUP='"₹"#,##0', PCT='0.0%', NUM='#,##0';
+  const fill=(argb)=>({type:'pattern',pattern:'solid',fgColor:{argb}});
+  const F=(o)=>Object.assign({name:'Calibri',size:12},o);
+  function styleRow(ws,rowIdx,fromCol,toCol,style){
+    for(let c=fromCol;c<=toCol;c++){Object.assign(ws.getCell(rowIdx,c),style);}
+  }
+
+  function buildWorkbook(ExcelJS, d){
+    const wb=new ExcelJS.Workbook();
+    wb.creator='Rebelz Attendance System'; wb.created=new Date();
+    const A=d.assumptions||{workdays:26,sundays:5,paidoffs:4};
+    const branchLbl = d.branch ? (' · '+d.branch) : ' · All Branches';
+    const dash=wb.addWorksheet('Dashboard',{properties:{tabColor:{argb:NAVY}}});
+    const reg =wb.addWorksheet('Regular Staff',{properties:{tabColor:{argb:BLUE2}},views:[{state:'frozen',ySplit:1}]});
+    const evt =wb.addWorksheet('Event Staff',{properties:{tabColor:{argb:GREEN}},views:[{state:'frozen',ySplit:1}]});
+    const out =wb.addWorksheet('Outsourced',{properties:{tabColor:{argb:RED}}});
+    const att =wb.addWorksheet('Attendance Detail',{properties:{tabColor:{argb:PURPLE}},views:[{state:'frozen',ySplit:2}]});
+
+    { // REGULAR STAFF
+      reg.addRow(['Staff ID','Name','Role','Branch','Salary','Work Days','Worked','Extra Absent','Deduction','Final Pay','Payment Status','Per Day (₹)']);
+      styleRow(reg,1,1,12,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
+      d.regular.forEach((s,i)=>{
+        const r=i+2, row=reg.getRow(r);
+        row.getCell(1).value=s.id; row.getCell(2).value=s.name; row.getCell(3).value=s.role; row.getCell(4).value=s.branch;
+        row.getCell(5).value=s.salary||0; row.getCell(6).value=s.workdays||A.workdays; row.getCell(7).value=s.worked||0;
+        row.getCell(8).value={formula:`MAX(0,F${r}-G${r}-Dashboard!$B$18)`};
+        row.getCell(9).value={formula:`ROUND(H${r}*E${r}/F${r},0)`};
+        row.getCell(10).value={formula:`ROUND(MIN(F${r},G${r}+Dashboard!$B$18)*E${r}/F${r},0)`};
+        row.getCell(11).value=(s.status||'UNPAID');
+        row.getCell(12).value={formula:`ROUND(E${r}/F${r},0)`};
+        [5,9,10,12].forEach(c=>row.getCell(c).numFmt=RUP);
+        [5,6,7].forEach(c=>{row.getCell(c).fill=fill(INPUT);row.getCell(c).font=F({color:{argb:BLUEFONT}});});
+        row.getCell(11).alignment={horizontal:'center'};
+      });
+      [7.5,10.5,13.7,10.4,7.4,10,7.6,11.6,9.6,8.4,14.1,10.1].forEach((w,i)=>reg.getColumn(i+1).width=w);
+    }
+    { // EVENT STAFF
+      evt.addRow(['Staff ID','Name','Role','Branch','Rate','Events Attended','Total Pay','Payment Status']);
+      styleRow(evt,1,1,8,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
+      d.event.forEach((s,i)=>{
+        const r=i+2, row=evt.getRow(r);
+        row.getCell(1).value=s.id; row.getCell(2).value=s.name; row.getCell(3).value=s.role; row.getCell(4).value=s.branch;
+        row.getCell(5).value=s.rate||0; row.getCell(6).value=s.events||0;
+        row.getCell(7).value={formula:`E${r}*F${r}`};
+        row.getCell(8).value=(s.status||'UNPAID');
+        row.getCell(5).numFmt=RUP; row.getCell(7).numFmt=RUP;
+        [5,6].forEach(c=>{row.getCell(c).fill=fill(INPUT);row.getCell(c).font=F({color:{argb:BLUEFONT}});});
+        row.getCell(8).alignment={horizontal:'center'};
+      });
+      [7.4,11.7,11.8,10.4,6.4,14.9,8.7,14.1].forEach((w,i)=>evt.getColumn(i+1).width=w);
+    }
+    { // OUTSOURCED (grouped, per-person TOTAL rows)
+      out.addRow(['ID','Name','Role','Branch','Date','Amount','Paid']);
+      styleRow(out,1,1,7,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
+      const byName={}; d.outsourced.forEach(o=>{(byName[o.name]=byName[o.name]||[]).push(o);});
+      const names=Object.keys(byName).sort((a,b)=>a.localeCompare(b));
+      let r=2;
+      names.forEach(nm=>{
+        const grp=byName[nm].slice().sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+        const startR=r;
+        grp.forEach(o=>{
+          const row=out.getRow(r);
+          row.getCell(1).value=o.id; row.getCell(2).value=o.name; row.getCell(3).value=o.role; row.getCell(4).value=o.branch;
+          row.getCell(5).value=o.date?new Date(o.date):null; row.getCell(5).numFmt='yyyy/mm/dd'; row.getCell(5).alignment={horizontal:'center'};
+          row.getCell(6).value=o.amount||0; row.getCell(6).numFmt=RUP;
+          row.getCell(7).value=(o.paid||'UNPAID'); row.getCell(7).alignment={horizontal:'center'};
+          r++;
+        });
+        const trow=out.getRow(r);
+        trow.getCell(2).value=nm+' — TOTAL';
+        trow.getCell(6).value={formula:`SUM(F${startR}:F${r-1})`};
+        styleRow(out,r,1,7,{fill:fill(HDRBLUE),font:F({bold:true,color:{argb:NAVY}})});
+        trow.getCell(6).numFmt=RUP;
+        r++;
+      });
+      [20,18.3,15.2,10.4,10.1,7.7,7.6].forEach((w,i)=>out.getColumn(i+1).width=w);
+      out.views=[{state:'frozen',ySplit:1}];
+    }
+    { // ATTENDANCE DETAIL + event-wise rollup (static)
+      att.addRow(['Staff ID','Date','Time','Role','Branch','Status','GPS Lat','GPS Lng','Has Photo','Name','Rate (₹)']);
+      styleRow(att,1,1,11,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
+      att.mergeCells(1,13,1,23);
+      const t=att.getCell(1,13); t.value='EVENT-WISE ATTENDANCE — WHO WENT, BY STAFF ID';
+      t.fill=fill(PURPLE); t.font=F({bold:true,color:{argb:WHITE}}); t.alignment={horizontal:'center'};
+      const rh=['Event Date','Events Held','Event Staff Count','Staff IDs Attended','Names','Event Staff Cost (₹)','Outsourced Crew','Outsourced Names','Outsourced Cost (₹)','Total Crew','Total Event Cost (₹)'];
+      rh.forEach((h,i)=>{const c=att.getCell(2,13+i);c.value=h;c.fill=fill(PURPLEHDR);c.font=F({bold:true});c.alignment={horizontal:'center',wrapText:true};});
+      d.attendance.forEach((a,i)=>{
+        const r=i+2, row=att.getRow(r);
+        row.getCell(1).value=a.sid;
+        row.getCell(2).value=a.date?new Date(a.date):null; row.getCell(2).numFmt='yyyy/mm/dd';
+        row.getCell(3).value=a.time||''; row.getCell(4).value=a.role; row.getCell(5).value=a.branch; row.getCell(6).value=a.status;
+        row.getCell(7).value=(a.lat==null?'':a.lat); row.getCell(8).value=(a.lng==null?'':a.lng);
+        row.getCell(9).value=a.photo||''; row.getCell(10).value=a.name||''; row.getCell(11).value=a.rate||0; row.getCell(11).numFmt=RUP;
+      });
+      const roll=computeRollup(d);
+      roll.forEach((row,i)=>{
+        const r=3+i;
+        const cells=[row.date?new Date(row.date):'',row.eventsHeld,row.staffCount,row.staffIds,row.names,row.eventCost,row.outCrew,row.outNames,row.outCost,row.totalCrew,row.totalCost];
+        cells.forEach((v,c)=>{att.getCell(r,13+c).value=v;});
+        att.getCell(r,13).numFmt='yyyy/mm/dd';
+        [18,21,23].forEach(c=>att.getCell(r,c).numFmt=RUP);
+      });
+      const sum=(f)=>roll.reduce((s,r)=>s+(r[f]||0),0);
+      const tr=3+roll.length;
+      const tvals=['TOTAL (all events)',sum('eventsHeld'),sum('staffCount'),null,null,sum('eventCost'),sum('outCrew'),null,sum('outCost'),sum('totalCrew'),sum('totalCost')];
+      tvals.forEach((v,c)=>{const cell=att.getCell(tr,13+c);if(v!=null)cell.value=v;cell.fill=fill(PURPLEHDR);cell.font=F({bold:true,color:{argb:NAVY}});});
+      [18,21,23].forEach(c=>att.getCell(tr,c).numFmt=RUP);
+      att.getCell(tr+1,13).value='Event dates'; att.getCell(tr+1,14).value=roll.length;
+      att.getCell(tr+2,13).value='Total events (by venue)'; att.getCell(tr+2,14).value=sum('eventsHeld');
+      [tr+1,tr+2].forEach(r=>{att.getCell(r,13).font=F({color:{argb:GREY}});att.getCell(r,14).font=F({bold:true});});
+      const w={1:7.4,2:10.7,3:5.7,4:11.8,5:10.4,6:8.9,7:9.4,10:12,11:9.6,13:20.8,14:11.7,15:16,16:20,17:31.6,18:15,19:16,20:28.3,21:15.8,22:10.8,23:16.7};
+      Object.entries(w).forEach(([c,val])=>att.getColumn(+c).width=val);
+    }
+    buildDashboard(dash, d, A, branchLbl);
+    return wb;
+
+    function buildDashboard(dash, d, A, branchLbl){
+      dash.getColumn(1).width=31.7; dash.getColumn(2).width=18.3;
+      for(let c=3;c<=8;c++)dash.getColumn(c).width=13;
+      const genStr=d.generated||('Generated: '+new Date().toLocaleString()+'  ·  Figures update automatically from Regular Staff, Event Staff and Outsourced sheets');
+      dash.mergeCells('A1:H1'); const c1=dash.getCell('A1');
+      c1.value='REBELZ EVENTS & PROMOTIONS  |  PAYROLL DASHBOARD';
+      c1.fill=fill(NAVY); c1.font=F({bold:true,size:20,color:{argb:WHITE}}); c1.alignment={horizontal:'left',vertical:'middle'};
+      dash.getRow(1).height=34;
+      dash.mergeCells('A2:H2'); const c2=dash.getCell('A2');
+      c2.value='Monthly Salary — '+(d.monthLabel||'')+branchLbl;
+      c2.fill=fill(BLUE1); c2.font=F({color:{argb:WHITE}}); c2.alignment={vertical:'middle'};
+      dash.mergeCells('A3:H3'); const c3=dash.getCell('A3');
+      c3.value=genStr; c3.font=F({size:9,color:{argb:GREY2}}); c3.alignment={vertical:'middle'};
+      const kpis=[['TOTAL PAYROLL (₹)',BLUE2,'B13',RUP],['PAID OUT (₹)',GREEN,'E13',RUP],['OUTSTANDING (₹)',RED,'F13',RUP],['PEOPLE ON PAYROLL',PURPLE,null,NUM]];
+      dash.getRow(6).height=30;
+      kpis.forEach((k,idx)=>{
+        const startCol=1+idx*2;
+        dash.mergeCells(5,startCol,5,startCol+1); dash.mergeCells(6,startCol,6,startCol+1);
+        const h=dash.getCell(5,startCol); h.value=k[0]; h.fill=fill(k[1]); h.font=F({bold:true,size:10,color:{argb:WHITE}}); h.alignment={horizontal:'center'};
+        const v=dash.getCell(6,startCol);
+        v.value=k[2]?{formula:k[2]}:{formula:'D10+D11+SUMPRODUCT((Outsourced!$A$2:$A$200<>"")/COUNTIF(Outsourced!$B$2:$B$200,Outsourced!$B$2:$B$200&""))'};
+        v.fill=fill(KPIGREY); v.font=F({bold:true,size:18,color:{argb:k[1]}}); v.alignment={horizontal:'center'}; v.numFmt=k[3];
+      });
+      dash.mergeCells('A8:H8'); const s8=dash.getCell('A8');
+      s8.value='PAYROLL BY CATEGORY'; s8.fill=fill(NAVY); s8.font=F({bold:true,size:11,color:{argb:WHITE}});
+      ['Category','Amount (₹)','% of Total','Headcount / Entries','Paid (₹)','Unpaid (₹)'].forEach((h,i)=>{const c=dash.getCell(9,1+i);c.value=h;c.fill=fill(HDRBLUE);c.font=F({bold:true});c.alignment={horizontal:'center'};});
+      dash.getRow(9).height=16.2;
+      const catRows=[
+        ['Regular Staff',"SUM('Regular Staff'!J2:J100)","COUNTA('Regular Staff'!A2:A100)","SUMIF('Regular Staff'!K2:K100,\"PAID\",'Regular Staff'!J2:J100)"],
+        ['Event Staff',"SUM('Event Staff'!G2:G100)","COUNTA('Event Staff'!A2:A100)","SUMIF('Event Staff'!H2:H100,\"PAID\",'Event Staff'!G2:G100)"],
+        ['Outsourced (per-shift)','SUMIF(Outsourced!$A$2:$A$500,"EXT-*",Outsourced!$F$2:$F$500)','COUNTIF(Outsourced!$A$2:$A$500,"EXT-*")','SUMIFS(Outsourced!$F$2:$F$500,Outsourced!$G$2:$G$500,"PAID",Outsourced!$A$2:$A$500,"EXT-*")']
+      ];
+      catRows.forEach((cr,i)=>{
+        const r=10+i;
+        dash.getCell(r,1).value=cr[0];
+        dash.getCell(r,2).value={formula:cr[1]}; dash.getCell(r,2).numFmt=RUP;
+        dash.getCell(r,3).value={formula:`IFERROR(B${r}/$B$13,0)`}; dash.getCell(r,3).numFmt=PCT;
+        dash.getCell(r,4).value={formula:cr[2]}; dash.getCell(r,4).numFmt=NUM;
+        dash.getCell(r,5).value={formula:cr[3]}; dash.getCell(r,5).numFmt=RUP;
+        dash.getCell(r,6).value={formula:`B${r}-E${r}`}; dash.getCell(r,6).numFmt=RUP;
+        for(let c=1;c<=6;c++)dash.getCell(r,c).font=F({});
+      });
+      dash.getCell(13,1).value='GRAND TOTAL';
+      ['B','C','D','E','F'].forEach((col,i)=>{const cc=2+i; dash.getCell(13,cc).value={formula:`SUM(${col}10:${col}12)`}; dash.getCell(13,cc).numFmt=(cc===4?NUM:(cc===3?PCT:RUP));});
+      styleRow(dash,13,1,6,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}})});
+      dash.getCell(13,4).numFmt=NUM; dash.getCell(13,3).numFmt=PCT;
+      dash.mergeCells('A15:H15'); const s15=dash.getCell('A15');
+      s15.value='PAYROLL ASSUMPTIONS (edit the blue cells)'; s15.fill=fill(NAVY); s15.font=F({bold:true,size:11,color:{argb:WHITE}});
+      [['Working Days in Month',A.workdays,'Used for per-day rate on Regular Staff'],['Sundays',A.sundays,''],['Paid Offs per Regular Staff',A.paidoffs,'Days paid even if absent']].forEach((a,i)=>{
+        const r=16+i;
+        dash.getCell(r,1).value=a[0]; dash.getCell(r,1).font=F({bold:true});
+        const b=dash.getCell(r,2); b.value=a[1]; b.fill=fill(YELLOW); b.font=F({bold:true,color:{argb:BLUEFONT}}); b.alignment={horizontal:'center'};
+        if(a[2]){dash.getCell(r,3).value=a[2]; dash.getCell(r,3).font=F({color:{argb:GREY}});}
+      });
+      dash.mergeCells('A20:H20'); const s20=dash.getCell('A20');
+      s20.value='OUTSOURCED SPEND BY PERSON'; s20.fill=fill(NAVY); s20.font=F({bold:true,size:11,color:{argb:WHITE}});
+      ['Name','Amount (₹)','Shifts','Unpaid (₹)'].forEach((h,i)=>{const c=dash.getCell(21,1+i);c.value=h;c.fill=fill(HDRBLUE);c.font=F({bold:true});c.alignment={horizontal:'center'};});
+      dash.getRow(21).height=16.2;
+      const uniqNames=[...new Set(d.outsourced.map(o=>o.name))].sort((a,b)=>a.localeCompare(b));
+      uniqNames.forEach((nm,i)=>{
+        const r=22+i;
+        dash.getCell(r,1).value=nm;
+        dash.getCell(r,2).value={formula:`IF($A${r}="","",SUMIFS(Outsourced!$F$2:$F$500,Outsourced!$B$2:$B$500,$A${r},Outsourced!$A$2:$A$500,"EXT-*"))`}; dash.getCell(r,2).numFmt=RUP;
+        dash.getCell(r,3).value={formula:`IF($A${r}="","",COUNTIFS(Outsourced!$B$2:$B$500,$A${r},Outsourced!$A$2:$A$500,"EXT-*"))`}; dash.getCell(r,3).numFmt=NUM;
+        dash.getCell(r,4).value={formula:`IF($A${r}="","",SUMIFS(Outsourced!$F$2:$F$500,Outsourced!$B$2:$B$500,$A${r},Outsourced!$G$2:$G$500,"UNPAID",Outsourced!$A$2:$A$500,"EXT-*"))`}; dash.getCell(r,4).numFmt=RUP;
+        for(let c=1;c<=4;c++)dash.getCell(r,c).font=F({});
+      });
+    }
+  }
+
+  function computeRollup(d){
+    const dayKey=(s)=>String(s).slice(0,10);
+    const dates=new Set();
+    d.attendance.forEach(a=>dates.add(dayKey(a.date)));
+    d.outsourced.forEach(o=>dates.add(dayKey(o.date)));
+    const sorted=[...dates].filter(Boolean).sort();
+    return sorted.map(day=>{
+      const atts=d.attendance.filter(a=>dayKey(a.date)===day);
+      const outs=d.outsourced.filter(o=>dayKey(o.date)===day);
+      const venues=new Set();
+      atts.forEach(a=>{
+        if(a.lat==null||a.lng==null||a.lat===''||a.lng==='') venues.add('no-gps');
+        else venues.add(Number(a.lat).toFixed(2)+','+Number(a.lng).toFixed(2));
+      });
+      const eventsHeld=Math.max(venues.size, atts.length?1:0, outs.length?1:0);
+      const eventCost=atts.reduce((s,a)=>s+(a.rate||0),0);
+      const outCost=outs.reduce((s,o)=>s+(o.amount||0),0);
+      return {date:day,eventsHeld,staffCount:atts.length,staffIds:atts.map(a=>a.sid).join(', '),
+        names:atts.map(a=>a.name).filter(Boolean).join(', '),eventCost,outCrew:outs.length,
+        outNames:outs.map(o=>o.name).join(', '),outCost,totalCrew:atts.length+outs.length,totalCost:eventCost+outCost};
+    });
+  }
+
+  root.RebelzReport={buildWorkbook,computeRollup};
+})(window);
 // ═══════════════════════════════════════════════════
 // CLOCK IN / OUT (Regular Staff)
 // ═══════════════════════════════════════════════════
