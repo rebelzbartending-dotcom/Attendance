@@ -299,6 +299,80 @@ function openModal(t,b){document.getElementById('modal-title').textContent=t;doc
 function closeModal(){document.getElementById('modal-bg').classList.add('hidden')}
 function loading(el){el.innerHTML='<div class="loading">Loading</div>'}
 // ═══════════════════════════════════════════════════
+// MY PROFILE (Aadhaar + bank details, via secure staff-kyc Edge Function)
+// ═══════════════════════════════════════════════════
+async function callKyc(action, extra){
+  const body = Object.assign({action, staff_id: CU.id, pin: CU.pin}, extra||{});
+  try{
+    const r = await fetch(`${SB_URL}/functions/v1/staff-kyc`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body: JSON.stringify(body)
+    });
+    let j = {}; try{ j = await r.json(); }catch(e){}
+    return {ok:r.ok, status:r.status, data:j};
+  }catch(e){ return {ok:false, status:0, data:{error:'Network error. Check internet and try again.'}}; }
+}
+async function pgMyProfile(el){
+  loading(el);
+  const res = await callKyc('get');
+  const k = (res.ok && res.data && res.data.kyc) ? res.data.kyc : {};
+  const v = x => (x===null||x===undefined) ? '' : String(x);
+  el.innerHTML = `
+  <div class="ptitle">My Profile</div>
+  <div class="psub">Add your Aadhaar and bank details for salary records. Stored securely — only you can see or edit your own details.</div>
+  <div style="max-width:460px">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
+        <div class="av">${ini(CU.name)}</div>
+        <div><div style="font-weight:600">${CU.name}</div><div style="font-size:12px;color:var(--muted)">${CU.role||''} · <code>${CU.id}</code></div></div>
+      </div>
+
+      <div class="ctitle">Personal</div>
+      <div class="frow"><label>Full Name (as per Aadhaar)</label><input id="kp-name" value="${v(k.full_name)||CU.name}" placeholder="Full name"></div>
+      <div class="frow"><label>Aadhaar Number</label><input id="kp-aadhaar" value="${v(k.aadhaar)}" placeholder="12-digit Aadhaar" inputmode="numeric" maxlength="14"></div>
+
+      <div class="ctitle" style="margin-top:1rem">Bank Account</div>
+      <div class="frow"><label>Account Holder Name</label><input id="kp-holder" value="${v(k.account_holder)}" placeholder="Name printed on the bank account"></div>
+      <div class="frow"><label>Account Number</label><input id="kp-acc" value="${v(k.bank_account)}" placeholder="Bank account number" inputmode="numeric"></div>
+      <div class="frow"><label>Confirm Account Number</label><input id="kp-acc2" value="${v(k.bank_account)}" placeholder="Re-enter account number" inputmode="numeric"></div>
+      <div class="frow"><label>IFSC Code</label><input id="kp-ifsc" value="${v(k.ifsc)}" placeholder="e.g. HDFC0001234" maxlength="11" style="text-transform:uppercase"></div>
+      <div class="frow"><label>Bank Name</label><input id="kp-bank" value="${v(k.bank_name)}" placeholder="e.g. HDFC Bank"></div>
+
+      <div id="kp-verify" style="font-size:12px;min-height:16px;margin:2px 0 8px">${k.account_verified?`✓ <span style="color:var(--green)">Account verified — ${v(k.verified_name)}</span>`:''}</div>
+      <p id="kp-msg" style="font-size:12px;margin:2px 0 10px;min-height:14px;color:var(--red)"></p>
+      <button class="btn btn-p" id="kp-save" onclick="saveMyProfile()">Save My Details</button>
+    </div>
+    <div class="info-box">🔒 Aadhaar and bank details are kept in a locked table. They are never shown on the public app and cannot be seen by other staff.</div>
+  </div>`;
+}
+async function saveMyProfile(){
+  const g = id => (document.getElementById(id).value||'').trim();
+  const msg = document.getElementById('kp-msg');
+  msg.style.color='var(--red)'; msg.textContent='';
+  const aadhaar = g('kp-aadhaar').replace(/\s/g,'');
+  const acc = g('kp-acc'), acc2 = g('kp-acc2');
+  const ifsc = g('kp-ifsc').toUpperCase();
+  if(aadhaar && !/^\d{12}$/.test(aadhaar)){ msg.textContent='Aadhaar must be exactly 12 digits.'; return; }
+  if(acc && acc!==acc2){ msg.textContent='Account numbers do not match.'; return; }
+  if(ifsc && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)){ msg.textContent='IFSC looks wrong (example: HDFC0001234).'; return; }
+  const btn = document.getElementById('kp-save');
+  btn.disabled=true; const old=btn.textContent; btn.textContent='Saving...';
+  const res = await callKyc('save', {
+    full_name:g('kp-name'), aadhaar, account_holder:g('kp-holder'),
+    bank_account:acc, ifsc, bank_name:g('kp-bank')
+  });
+  btn.disabled=false; btn.textContent=old;
+  if(res.ok && res.data && res.data.ok){
+    toast('Your details are saved','ok');
+    const vd = document.getElementById('kp-verify');
+    if(res.data.account_verified){ vd.innerHTML=`✓ <span style="color:var(--green)">Account verified — ${res.data.verified_name||''}</span>`; }
+    msg.style.color='var(--green)'; msg.textContent='Saved successfully.';
+  } else {
+    msg.textContent = (res.data && res.data.error) ? res.data.error : 'Could not save. Check your details and try again.';
+  }
+}
+// ═══════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════
 // ── UPDATED HARDCODED PASSWORDS ──
@@ -461,8 +535,8 @@ function buildNav(){
     {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
   ];
   const staff = CU.type === 'regular' ?
-    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'}] :
-    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'}];
+    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}] :
+    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}];
   let items;
   if(CU.userType === 'admin'){ items = isManager() ? mgr : adm; } else { items = staff; }
   nav.innerHTML = items.map(item => {
@@ -496,7 +570,8 @@ function showPage(id){
     reports:pgReports,
     changepw:pgChangePw,
     clockin:pgClockIn, myatt:pgMyAtt,
-    markpresent:pgMark, myrecords:pgMyRecords, mypay:pgMyPay, myhistory:pgMyHistory
+    markpresent:pgMark, myrecords:pgMyRecords, mypay:pgMyPay, myhistory:pgMyHistory,
+    myprofile:pgMyProfile
   };
   if(pages[id]) pages[id](mc);
   document.getElementById('sidebar').classList.remove('open');
