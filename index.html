@@ -637,19 +637,20 @@ function buildNav(){
     {sep:'Staff'},{id:'staffmgmt',ic:'◈',lbl:'Staff'},{id:'adminmgmt',ic:'◎',lbl:'Admins',master:true},
     {sep:'Events'},{id:'events',ic:'◆',lbl:'Events'},{id:'outsourced',ic:'⬢',lbl:'Outsourced'},
     {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},{id:'clocklog',ic:'◷',lbl:'Clock Log'},{id:'manual',ic:'✎',lbl:'Manual Entry'},
-    {sep:'Payroll'},{id:'monthrates',ic:'◉',lbl:'Monthly Rates'},{id:'salary',ic:'₹',lbl:'Salary Sheet'},
+    {sep:'Payroll'},{id:'monthrates',ic:'◉',lbl:'Monthly Rates'},{id:'travel',ic:'✈',lbl:'Travel & Advances'},{id:'salary',ic:'₹',lbl:'Salary Sheet'},
     {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
     {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
   ];
   const mgr = [
     {sep:'Events'},{id:'events',ic:'◆',lbl:'Events'},{id:'outsourced',ic:'⬢',lbl:'Outsourced'},
     {sep:'Attendance'},{id:'approvals',ic:'✦',lbl:'Approvals',badge:true},
+    {sep:'Travel'},{id:'travel',ic:'✈',lbl:'Travel & Advances'},
     {sep:'Reports'},{id:'reports',ic:'📊',lbl:'Excel Reports'},
     {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
   ];
   const staff = CU.type === 'regular' ?
-    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}] :
-    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}];
+    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'mytravel',ic:'✈',lbl:'My Travel'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}] :
+    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'mytravel',ic:'✈',lbl:'My Travel'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}];
   let items;
   if(CU.userType === 'admin'){ items = isManager() ? mgr : adm; } else { items = staff; }
   nav.innerHTML = items.map(item => {
@@ -666,7 +667,7 @@ async function updateApprovalBadge(){
   const badge = document.getElementById('appr-badge');
   if(badge && Array.isArray(data) && data.length > 0) badge.textContent = data.length;
 }
-const MGR_ALLOWED = ['events','outsourced','approvals','reports','changepw'];
+const MGR_ALLOWED = ['events','outsourced','approvals','travel','reports','changepw'];
 function showPage(id){
   if(isManager() && !MGR_ALLOWED.includes(id)){
     toast('You do not have access to that section','er');
@@ -679,7 +680,7 @@ function showPage(id){
     dashboard:pgDash, staffmgmt:pgStaff, adminmgmt:pgAdmins,
     events:pgEvents, outsourced:pgExt,
     approvals:pgApprovals, clocklog:pgClockLog, manual:pgManual,
-    monthrates:pgRates, salary:pgSalary,
+    monthrates:pgRates, salary:pgSalary, travel:pgTravel, mytravel:pgMyTravel,
     reports:pgReports,
     changepw:pgChangePw,
     clockin:pgClockIn, myatt:pgMyAtt,
@@ -1642,14 +1643,22 @@ async function loadSalary(){
   if(Array.isArray(paidData)) paidData.forEach(p=>{ paidMap[p.staff_id]=p.paid===true; });
   const ld = String(td).padStart(2,'0');
   const m2 = String(mi+1).padStart(2,'0');
-  const [attData, clockData, extData] = await Promise.all([
+  const [attData, clockData, extData, travData] = await Promise.all([
     sbGet('attendance',`status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${fb?`&branch=eq.${fb}`:''}&select=*`),
     sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${fb?`&branch=eq.${fb}`:''}&select=*`),
-    sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${fb?`&branch=eq.${fb}`:''}&select=*`)
+    sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${fb?`&branch=eq.${fb}`:''}&select=*`),
+    sbGet('travel_ledger',`month_key=eq.${encodeURIComponent(mk)}${fb?`&branch=eq.${fb}`:''}&select=*&limit=5000`)
   ]);
   const att = Array.isArray(attData)?attData:[];
   const clocks = Array.isArray(clockData)?clockData:[];
   const ext = Array.isArray(extData)?extData:[];
+  const travel = Array.isArray(travData)?travData:[];
+  const travBy = {};
+  travel.forEach(r=>{ (travBy[r.staff_id]=travBy[r.staff_id]||[]).push(r); });
+  // + = company pays the staff back, − = staff is holding company cash
+  const travAdj = id => -(tlBalance(travBy[id]||[]).bal);
+  const travPend = travel.filter(r=>r.kind==='expense'&&r.status==='pending').length;
+  let travNet = 0;
   let regT=0,evtT=0;
   const extT = ext.reduce((s,o)=>s+o.amount,0);
   const regRows = staff.filter(s=>s.type==='regular').map(s=>{
@@ -1657,9 +1666,10 @@ async function loadSalary(){
     const dr = (s.salary||0)/wd;
     const ea = Math.max(0,wd-4-dw);
     const ded = Math.round(ea*dr);
-    const pay = (s.salary||0)-ded;
-    regT+=pay;
-    return {s,dw,wd,ea,ded,pay};
+    const adj = travAdj(s.id);
+    const pay = (s.salary||0)-ded+adj;
+    regT+=pay; travNet+=adj;
+    return {s,dw,wd,ea,ded,adj,pay};
   });
   let outCount=0, outT=0;
   const evtRows = staff.filter(s=>s.type==='event').map(s=>{
@@ -1676,8 +1686,10 @@ async function loadSalary(){
       pay += amt;
       if(isOut){ cOut++; outCount++; outT+=amt; } else cIn++;
     });
-    evtT+=pay;
-    return {s,rate,rateOut,cnt:staffAtt.length,cIn,cOut,pay};
+    const adj = travAdj(s.id);
+    pay += adj;
+    evtT+=pay; travNet+=adj;
+    return {s,rate,rateOut,cnt:staffAtt.length,cIn,cOut,adj,pay};
   });
   const grand = regT+evtT+extT;
   const payStaffList = [...regRows.map(r=>r.s), ...evtRows.map(r=>r.s)];
@@ -1698,32 +1710,35 @@ async function loadSalary(){
       <div class="sbd"><div class="sbd-v" style="color:var(--blue)">₹${evtT.toLocaleString()}</div><div class="sbd-l">Event Staff</div></div>
       <div class="sbd"><div class="sbd-v" style="color:var(--amber)">₹${extT.toLocaleString()}</div><div class="sbd-l">Outsourced</div></div>
       <div class="sbd"><div class="sbd-v" style="color:var(--gold)">₹${outT.toLocaleString()}</div><div class="sbd-l">✈ Outstation (${outCount} shifts)</div></div>
+      <div class="sbd"><div class="sbd-v" style="color:${travNet<0?'var(--red)':'var(--green)'}">${travNet<0?'−':'+'}₹${Math.abs(travNet).toLocaleString()}</div><div class="sbd-l">Travel settlement${travPend?` · ⚠ ${travPend} bill(s) pending`:''}</div></div>
     </div>
   </div>
   <div class="ssep">Regular Staff</div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Salary</th><th>Work Days</th><th>Worked</th><th>Extra Absent</th><th>Deduction</th><th>Final Pay</th><th>Payment</th></tr></thead>
-  <tbody>${regRows.map(({s,dw,wd,ea,ded,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
+  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Salary</th><th>Work Days</th><th>Worked</th><th>Extra Absent</th><th>Deduction</th><th>✈ Travel</th><th>Final Pay</th><th>Payment</th></tr></thead>
+  <tbody>${regRows.map(({s,dw,wd,ea,ded,adj,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-r">${ini(s.name)}</div>${s.name}</div></td>
     <td>${s.branch}</td><td>₹${(s.salary||0).toLocaleString()}</td>
     <td>${wd} <span style="font-size:11px;color:var(--muted)">(+4 offs)</span></td>
     <td>${dw}</td>
     <td style="color:${ea>0?'var(--red)':'var(--muted)'}">${ea>0?ea+' days':'—'}</td>
     <td style="color:${ded>0?'var(--red)':'var(--muted)'}">${ded>0?'−₹'+ded.toLocaleString():'—'}</td>
+    <td style="color:${adj<0?'var(--red)':(adj>0?'var(--green)':'var(--muted)')}">${adj?(adj<0?'−₹'+Math.abs(adj).toLocaleString():'+₹'+adj.toLocaleString()):'—'}</td>
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
     <td><button class="btn bsm ${pd?'btn-s':'btn-d'}" onclick="toggleSalaryPaid('${s.id}','${mk}','${s.branch}',${pd})">${pd?'✓ Paid':'Mark Paid'}</button></td>
-  </tr>`;}).join('')||'<tr><td colspan="9" class="empty">No regular staff.</td></tr>'}</tbody></table></div></div>
+  </tr>`;}).join('')||'<tr><td colspan="10" class="empty">No regular staff.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Event Staff</div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>○ In Rate</th><th>✈ Out Rate</th><th>Instation</th><th>Outstation</th><th>Events</th><th>Total Pay</th><th>Payment</th></tr></thead>
-  <tbody>${evtRows.map(({s,rate,rateOut,cnt,cIn,cOut,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
+  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>○ In Rate</th><th>✈ Out Rate</th><th>Instation</th><th>Outstation</th><th>Events</th><th>✈ Travel</th><th>Total Pay</th><th>Payment</th></tr></thead>
+  <tbody>${evtRows.map(({s,rate,rateOut,cnt,cIn,cOut,adj,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-e">${ini(s.name)}</div>${s.name}</div></td>
     <td>${s.branch}</td><td>${s.role}</td><td>₹${rate.toLocaleString()}</td>
     <td style="color:${rateOut!=null?'var(--amber)':'var(--muted)'}">${rateOut!=null?'₹'+rateOut.toLocaleString():'not set'}</td>
     <td>${cIn||'—'}</td>
     <td style="color:${cOut?'var(--amber)':'var(--muted)'};font-weight:${cOut?'600':'400'}">${cOut||'—'}</td>
     <td style="font-weight:600">${cnt}</td>
+    <td style="color:${adj<0?'var(--red)':(adj>0?'var(--green)':'var(--muted)')}">${adj?(adj<0?'−₹'+Math.abs(adj).toLocaleString():'+₹'+adj.toLocaleString()):'—'}</td>
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
     <td><button class="btn bsm ${pd?'btn-s':'btn-d'}" onclick="toggleSalaryPaid('${s.id}','${mk}','${s.branch}',${pd})">${pd?'✓ Paid':'Mark Paid'}</button></td>
-  </tr>`;}).join('')||'<tr><td colspan="10" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
+  </tr>`;}).join('')||'<tr><td colspan="11" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Outsourced</div>
   <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Branch</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
   <tbody>${ext.map(o=>`<tr>
@@ -2490,6 +2505,245 @@ async function pgMyPay(el){
     </div>`;
   }
 }
+// ═══════════════════════════════════════════════════
+// TRAVEL & ADVANCES  (travel_ledger)
+//   kind='advance'  -> company cash handed to staff (approved on entry)
+//   kind='expense'  -> a bill the staff spent (pending until approved)
+//   balance = approved advances − approved expenses
+//     positive -> staff is HOLDING company money  -> minus from salary
+//     negative -> staff spent his OWN money       -> plus to salary
+// ═══════════════════════════════════════════════════
+const TL_CATS = ['Travel','Food','Accommodation','Other'];
+function tlBalance(rows){
+  let adv=0, exp=0, pend=0;
+  (rows||[]).forEach(r=>{
+    const amt = Number(r.amount)||0;
+    if(r.kind==='advance' && r.status==='approved') adv += amt;
+    else if(r.kind==='expense' && r.status==='approved') exp += amt;
+    else if(r.kind==='expense' && r.status==='pending') pend += amt;
+  });
+  return {adv, exp, pend, bal: adv-exp};
+}
+function tlBalLabel(bal){
+  if(bal > 0) return `<span style="color:var(--red);font-weight:700">₹${bal.toLocaleString()} holding</span>`;
+  if(bal < 0) return `<span style="color:var(--green);font-weight:700">₹${Math.abs(bal).toLocaleString()} to pay</span>`;
+  return '<span style="color:var(--muted)">Settled</span>';
+}
+// If the month of this date is already locked, push the entry to the
+// current month instead — a late bill must never re-open a closed month.
+async function tlMonthKey(date, branch){
+  const mk = mkkey(date);
+  const lock = await sbGet('salary_lock',`month_key=eq.${encodeURIComponent(mk)}&select=id`);
+  if(Array.isArray(lock) && lock.length > 0){
+    toast('That month is locked — entry moved to '+mkkey(today()),'info',6000);
+    return mkkey(today());
+  }
+  return mk;
+}
+// Compress a bill photo (keeps text readable) -> window._tlBill (Blob)
+function tlPickBill(input){
+  const file = input.files && input.files[0]; if(!file) return;
+  const rd = new FileReader();
+  rd.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const max=1000; let w=img.width, h=img.height;
+      if(w>h && w>max){ h=Math.round(h*max/w); w=max; }
+      else if(h>=w && h>max){ w=Math.round(w*max/h); h=max; }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      c.toBlob(bl=>{ window._tlBill = bl; }, 'image/jpeg', 0.8);
+      const pv=document.getElementById('tl-bill-img');
+      if(pv){ pv.src=c.toDataURL('image/jpeg',0.7); pv.style.display='block'; }
+      const ok=document.getElementById('tl-bill-ok'); if(ok) ok.style.display='block';
+    };
+    img.src = e.target.result;
+  };
+  rd.readAsDataURL(file);
+}
+// ── STAFF SIDE: My Travel ──
+async function pgMyTravel(el){
+  loading(el);
+  window._tlBill = null;
+  const mk = mkkey(today());
+  const rows = await sbGet('travel_ledger',`staff_id=eq.${CU.id}&order=date.desc&limit=300`);
+  const all = Array.isArray(rows)?rows:[];
+  const mine = all.filter(r=>r.month_key===mk);
+  const b = tlBalance(mine);
+  el.innerHTML = `<div style="max-width:560px">
+  <div class="ptitle">My Travel</div><div class="psub">${mk} · advances received and bills submitted</div>
+  <div class="sal-hero">
+    <div class="sal-total" style="color:${b.bal>0?'var(--red)':(b.bal<0?'var(--green)':'var(--gold)')}">₹${Math.abs(b.bal).toLocaleString()}</div>
+    <div class="sal-lbl">${b.bal>0?'You are holding company money':(b.bal<0?'Company will pay you this':'All settled')}</div>
+    <div class="sal-bd">
+      <div class="sbd"><div class="sbd-v">₹${b.adv.toLocaleString()}</div><div class="sbd-l">Advance received</div></div>
+      <div class="sbd"><div class="sbd-v">₹${b.exp.toLocaleString()}</div><div class="sbd-l">Bills approved</div></div>
+      <div class="sbd"><div class="sbd-v" style="color:var(--amber)">₹${b.pend.toLocaleString()}</div><div class="sbd-l">Bills pending</div></div>
+    </div>
+  </div>
+  <div class="info-box">This is not a salary cut. Money you already received in cash is simply balanced here at month end.</div>
+  <div class="card"><div class="ctitle">Add a Bill</div>
+    <div class="fg3">
+      <div class="frow"><label>Category</label><select id="tl-cat">${TL_CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="frow"><label>Amount (₹)</label><input type="number" id="tl-amt" placeholder="350"></div>
+      <div class="frow"><label>Date</label><input type="date" id="tl-date" value="${today()}"></div>
+    </div>
+    <div class="frow"><label>Note (where / what)</label><input id="tl-note" placeholder="e.g. Bus to Rajahmundry"></div>
+    <div style="background:var(--dk3);border-radius:12px;padding:.85rem;border:1px solid var(--border2);margin:.75rem 0">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem;font-weight:600">📸 Bill Photo</div>
+      <input type="file" accept="image/*" capture="environment" onchange="tlPickBill(this)" style="width:100%">
+      <img id="tl-bill-img" style="display:none;max-width:160px;border-radius:8px;margin-top:.6rem;border:2px solid var(--gold)">
+      <div id="tl-bill-ok" style="display:none;font-size:12px;color:var(--green);margin-top:5px">✓ Bill attached</div>
+    </div>
+    <div class="grow"><button class="btn btn-p" onclick="addMyBill()">+ Submit Bill</button></div>
+  </div>
+  <div class="card"><div class="ctitle">My Entries — ${mk}</div>
+    <div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Note</th><th>Status</th></tr></thead><tbody>
+    ${mine.map(r=>`<tr>
+      <td>${r.date}</td>
+      <td>${r.kind==='advance'?'<span class="b bb">↓ Advance</span>':`<span class="b ba">${r.category||'Bill'}</span>`}</td>
+      <td style="font-weight:600;color:${r.kind==='advance'?'var(--blue)':'var(--gold)'}">₹${Number(r.amount||0).toLocaleString()}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.note||'—'} ${r.bill_path?`<a href="${r.bill_path}" target="_blank" style="color:var(--gold)">📎</a>`:''}</td>
+      <td><span class="b ${r.status==='approved'?'bg':(r.status==='rejected'?'br':'ba')}">${r.status}</span></td>
+    </tr>`).join('')||'<tr><td colspan="5" class="empty">Nothing this month.</td></tr>'}
+    </tbody></table></div>
+  </div></div>`;
+}
+async function addMyBill(){
+  const cat=document.getElementById('tl-cat').value;
+  const amt=parseFloat(document.getElementById('tl-amt').value)||0;
+  const date=document.getElementById('tl-date').value;
+  const note=document.getElementById('tl-note').value.trim();
+  if(amt<=0){toast('Enter the amount','er');return}
+  if(!date){toast('Pick the date','er');return}
+  if(!window._tlBill && !confirm('No bill photo attached. Submit anyway?')) return;
+  toast('Saving...','info',4000);
+  let billUrl='';
+  if(window._tlBill){
+    const fn=`BILL_${CU.id}_${date}_${uid()}.jpg`;
+    billUrl = await uploadPhoto(window._tlBill, fn) || '';
+    if(!billUrl){toast('Bill photo upload failed — check internet','er',5000);return}
+  }
+  const mk = await tlMonthKey(date, CU.branch);
+  const res = await sbPost('travel_ledger',{
+    id:'TL-'+uid(), staff_id:CU.id, staff_name:CU.name, branch:CU.branch,
+    kind:'expense', category:cat, amount:amt, note, bill_path:billUrl,
+    date, month_key:mk, status:'pending', entered_by:CU.id
+  });
+  if(Array.isArray(res)&&res.length>0){ toast('Bill submitted — waiting for approval ✓'); pgMyTravel(document.getElementById('mc')); }
+  else toast('Failed to submit. Try again.','er');
+}
+// ── ADMIN / MANAGER SIDE: Travel & Advances ──
+async function pgTravel(el){
+  loading(el);
+  const br = myBranch();
+  const mk = mkkey(today());
+  let stQ='active=eq.true&select=id,name,branch,type,role&order=name.asc';
+  if(br) stQ += `&branch=eq.${br}`;
+  const [stData, tlData] = await Promise.all([
+    sbGet('staff',stQ),
+    sbGet('travel_ledger',`month_key=eq.${encodeURIComponent(mk)}${br?`&branch=eq.${br}`:''}&order=date.desc&limit=2000`)
+  ]);
+  const staff = Array.isArray(stData)?stData:[];
+  const rows = Array.isArray(tlData)?tlData:[];
+  window._TLSTAFF = {}; staff.forEach(s=>{window._TLSTAFF[s.id]=s;});
+  const pending = rows.filter(r=>r.kind==='expense'&&r.status==='pending');
+  const byStaff = {};
+  rows.forEach(r=>{ (byStaff[r.staff_id]=byStaff[r.staff_id]||[]).push(r); });
+  const balRows = Object.keys(byStaff).map(id=>({id, name:(window._TLSTAFF[id]?.name)||byStaff[id][0].staff_name||id, b:tlBalance(byStaff[id])}))
+                        .filter(r=>r.b.adv||r.b.exp||r.b.pend)
+                        .sort((a,b)=>b.b.bal-a.b.bal);
+  const totalHolding = balRows.reduce((t,r)=>t+(r.b.bal>0?r.b.bal:0),0);
+  const totalOwed    = balRows.reduce((t,r)=>t+(r.b.bal<0?-r.b.bal:0),0);
+  el.innerHTML = `<div class="ptitle">Travel & Advances</div>
+  <div class="psub">${mk} · cash given, bills submitted, balance settled into salary.</div>
+  <div class="sal-hero">
+    <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+      <div><div class="sal-total" style="font-size:26px;color:var(--red)">₹${totalHolding.toLocaleString()}</div><div class="sal-lbl">Cash held by staff</div></div>
+      <div><div class="sal-total" style="font-size:26px;color:var(--green)">₹${totalOwed.toLocaleString()}</div><div class="sal-lbl">You owe staff</div></div>
+      <div><div class="sal-total" style="font-size:26px;color:var(--amber)">${pending.length}</div><div class="sal-lbl">Bills awaiting approval</div></div>
+    </div>
+  </div>
+  <div class="card"><div class="ctitle">Give Advance</div>
+    <div class="info-box">Record it the moment the cash leaves your hand — that single entry is what keeps the whole account accurate.</div>
+    <div class="fg3">
+      <div class="frow"><label>Staff</label><select id="ta-st"><option value="">— select staff —</option>${staff.map(s=>`<option value="${s.id}">${s.name} (${s.id})${br?'':' · '+s.branch}</option>`).join('')}</select></div>
+      <div class="frow"><label>Amount (₹)</label><input type="number" id="ta-amt" placeholder="1500"></div>
+      <div class="frow"><label>Date</label><input type="date" id="ta-date" value="${today()}"></div>
+    </div>
+    <div class="frow"><label>Note (what it is for)</label><input id="ta-note" placeholder="e.g. Rajahmundry event — travel + food"></div>
+    <div class="grow"><button class="btn btn-p" onclick="giveAdvance()">+ Record Advance</button></div>
+  </div>
+  <div class="card"><div class="ctitle">Bills Pending Approval (${pending.length})</div>
+    ${!pending.length?'<div class="empty">✓ Nothing pending.</div>':pending.map(r=>`
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      ${r.bill_path?`<a href="${r.bill_path}" target="_blank"><img src="${r.bill_path}" style="width:58px;height:58px;object-fit:cover;border-radius:8px;border:2px solid var(--gold)"></a>`:`<div class="av av-e" style="width:58px;height:58px;font-size:11px">NO BILL</div>`}
+      <div style="flex:1;min-width:150px">
+        <div style="font-weight:600">${(window._TLSTAFF[r.staff_id]?.name)||r.staff_name||r.staff_id} · <span style="color:var(--gold)">₹${Number(r.amount||0).toLocaleString()}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${r.category||''} · ${r.date} · ${r.branch||''}</div>
+        <div style="font-size:12px;color:var(--muted)">${r.note||''}</div>
+        ${!r.bill_path?'<span class="b ba" style="margin-top:4px;display:inline-block">⚠ No bill attached</span>':''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-s bsm" onclick="tlApprove('${r.id}')">✓ Approve</button>
+        <button class="btn btn-b bsm" onclick="tlEditAmt('${r.id}',${Number(r.amount||0)})">✎ Edit ₹</button>
+        <button class="btn btn-d bsm" onclick="tlReject('${r.id}')">✗ Reject</button>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="card"><div class="ctitle">Balances — ${mk}</div>
+    <div class="tw"><table><thead><tr><th>Staff</th><th>Advance Given</th><th>Bills Approved</th><th>Pending</th><th>Balance</th></tr></thead><tbody>
+    ${balRows.map(r=>`<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-e">${ini(r.name)}</div>${r.name}</div></td>
+      <td style="color:var(--blue)">₹${r.b.adv.toLocaleString()}</td>
+      <td style="color:var(--gold)">₹${r.b.exp.toLocaleString()}</td>
+      <td style="color:${r.b.pend?'var(--amber)':'var(--muted)'}">${r.b.pend?'₹'+r.b.pend.toLocaleString():'—'}</td>
+      <td>${tlBalLabel(r.b.bal)}</td>
+    </tr>`).join('')||'<tr><td colspan="5" class="empty">No travel entries this month.</td></tr>'}
+    </tbody></table></div>
+  </div>
+  <div class="card"><div class="ctitle">All Entries — ${mk}</div>
+    <div class="tw"><table><thead><tr><th>Date</th><th>Staff</th><th>Type</th><th>Amount</th><th>Note</th><th>Status</th><th></th></tr></thead><tbody>
+    ${rows.map(r=>`<tr>
+      <td>${r.date}</td><td>${(window._TLSTAFF[r.staff_id]?.name)||r.staff_name||r.staff_id}</td>
+      <td>${r.kind==='advance'?'<span class="b bb">↓ Advance</span>':`<span class="b ba">${r.category||'Bill'}</span>`}</td>
+      <td style="font-weight:600">₹${Number(r.amount||0).toLocaleString()}</td>
+      <td style="font-size:12px;color:var(--muted)">${r.note||'—'} ${r.bill_path?`<a href="${r.bill_path}" target="_blank" style="color:var(--gold)">📎</a>`:''}</td>
+      <td><span class="b ${r.status==='approved'?'bg':(r.status==='rejected'?'br':'ba')}">${r.status}</span></td>
+      <td><button class="btn bsm btn-d" onclick="tlDelete('${r.id}')">✕</button></td>
+    </tr>`).join('')||'<tr><td colspan="7" class="empty">No entries.</td></tr>'}
+    </tbody></table></div>
+  </div>`;
+}
+async function giveAdvance(){
+  const sid=document.getElementById('ta-st').value;
+  const amt=parseFloat(document.getElementById('ta-amt').value)||0;
+  const date=document.getElementById('ta-date').value;
+  const note=document.getElementById('ta-note').value.trim();
+  if(!sid){toast('Select the staff','er');return}
+  if(amt<=0){toast('Enter the amount','er');return}
+  const st=(window._TLSTAFF||{})[sid]||{};
+  const mk=await tlMonthKey(date, st.branch);
+  const res=await sbPost('travel_ledger',{
+    id:'TL-'+uid(), staff_id:sid, staff_name:st.name||sid, branch:st.branch||'',
+    kind:'advance', category:'Advance', amount:amt, note, bill_path:'',
+    date, month_key:mk, status:'approved', entered_by:CU.id
+  });
+  if(Array.isArray(res)&&res.length>0){ toast('Advance of ₹'+amt.toLocaleString()+' recorded for '+(st.name||sid)+' ✓'); pgTravel(document.getElementById('mc')); }
+  else toast('Failed to save. Check the travel_ledger table.','er',6000);
+}
+async function tlApprove(id){ await sbPatch('travel_ledger',`id=eq.${id}`,{status:'approved'}); toast('Bill approved ✓'); pgTravel(document.getElementById('mc')); }
+async function tlReject(id){ if(!confirm('Reject this bill?'))return; await sbPatch('travel_ledger',`id=eq.${id}`,{status:'rejected'}); toast('Rejected','er'); pgTravel(document.getElementById('mc')); }
+async function tlEditAmt(id,cur){
+  const t=prompt('Correct the bill amount (₹):', cur);
+  if(t===null)return;
+  const v=parseFloat(t)||0;
+  if(v<=0){toast('Invalid amount','er');return}
+  await sbPatch('travel_ledger',`id=eq.${id}`,{amount:v});
+  toast('Amount updated to ₹'+v.toLocaleString());
+  pgTravel(document.getElementById('mc'));
+}
+async function tlDelete(id){ if(!confirm('Delete this entry permanently?'))return; await sbDelete('travel_ledger',`id=eq.${id}`); toast('Deleted'); pgTravel(document.getElementById('mc')); }
 // ═══════════════════════════════════════════════════
 // PAY HISTORY (Staff — event & regular, month by month)
 // ═══════════════════════════════════════════════════
