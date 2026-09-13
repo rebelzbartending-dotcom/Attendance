@@ -700,6 +700,22 @@ async function getRate(staffId, monthKey){
   const s = await sbGet('staff', `id=eq.${staffId}&select=rate`);
   return (Array.isArray(s) && s.length > 0) ? s[0].rate || 0 : 0;
 }
+async function getRateOut(staffId, monthKey){
+  const data = await sbGet('month_rates', `staff_id=eq.${staffId}&month_key=eq.${encodeURIComponent(monthKey)}&select=rate_out`);
+  if(Array.isArray(data) && data.length > 0 && data[0].rate_out != null && data[0].rate_out !== '') return Number(data[0].rate_out);
+  const st = await sbGet('staff', `id=eq.${staffId}&select=rate_out`);
+  if(Array.isArray(st) && st.length > 0 && st[0].rate_out != null && st[0].rate_out !== '') return Number(st[0].rate_out);
+  return null;
+}
+// Returns the rupee amount for one attendance row, or null if an outstation
+// rate has never been set for this staff (caller must ask the manager).
+async function resolveRate(staffId, monthKey, tripType){
+  if(tripType === 'outstation'){
+    const ro = await getRateOut(staffId, monthKey);
+    return (ro != null && ro > 0) ? ro : null;
+  }
+  return await getRate(staffId, monthKey);
+}
 // ═══════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════
@@ -1038,6 +1054,10 @@ async function pgEvents(el){
       <div class="frow"><label>Date</label><input type="date" id="ne-d" value="${today()}"></div>
       <div class="frow"><label>Branch</label><select id="ne-br">${(br?[br]:BRANCHES).map(b=>`<option>${b}</option>`).join('')}</select></div>
     </div>
+    <div class="fg3">
+      <div class="frow"><label>Trip Type</label><select id="ne-trip" onchange="toggleCityBox()"><option value="instation">Instation (local)</option><option value="outstation">Outstation</option></select></div>
+      <div class="frow" id="ne-city-box" style="display:none"><label>City / Place</label><input id="ne-city" placeholder="e.g. Rajahmundry"></div>
+    </div>
     <div class="grow"><button class="btn btn-p" onclick="addEvent()">+ Create Event</button></div>
   </div>
   <div class="card">
@@ -1055,9 +1075,10 @@ async function loadEvtTable(){
   const data = await sbGet('events', q);
   const el = document.getElementById('evt-t');
   if(!Array.isArray(data)||!data.length){el.innerHTML='<div class="empty">No events yet.</div>';return}
-  el.innerHTML = `<table><thead><tr><th>Event</th><th>Date</th><th>Branch</th><th>Attendance</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  el.innerHTML = `<table><thead><tr><th>Event</th><th>Date</th><th>Branch</th><th>Trip</th><th>Attendance</th><th>Status</th><th>Actions</th></tr></thead><tbody>
   ${data.map(e=>`<tr>
     <td style="font-weight:500">${e.name}</td><td>${e.date}</td><td>${e.branch}</td>
+    <td><button class="btn bsm ${e.trip_type==='outstation'?'btn-b':''}" onclick="toggleTrip('${e.id}','${e.trip_type||'instation'}')" title="Tap to switch">${e.trip_type==='outstation'?'✈ Out'+(e.city?' · '+e.city:''):'○ In'}</button></td>
     <td id="att-cnt-${e.id}">—</td>
     <td><span class="b ${e.status==='open'?'bg':'ba'}">${e.status}</span></td>
     <td><div style="display:flex;gap:5px">
@@ -1078,10 +1099,31 @@ async function addEvent(){
   const name=document.getElementById('ne-n').value.trim();
   const date=document.getElementById('ne-d').value;
   const br=document.getElementById('ne-br').value;
+  const trip=document.getElementById('ne-trip')?.value||'instation';
+  const city=(document.getElementById('ne-city')?.value||'').trim();
   if(!name||!date){toast('Name and date required','er');return}
-  const res = await sbPost('events',{id:'EVT-'+uid(),name,date,branch:br,status:'open'});
+  if(trip==='outstation'&&!city){toast('Enter the city for an outstation event','er');return}
+  const res = await sbPost('events',{id:'EVT-'+uid(),name,date,branch:br,status:'open',trip_type:trip,city:trip==='outstation'?city:null});
   if(Array.isArray(res)&&res.length>0){toast('Event created: '+name);document.getElementById('ne-n').value='';loadEvtTable();}
   else toast('Failed to create event','er');
+}
+function toggleCityBox(){
+  const t=document.getElementById('ne-trip')?.value;
+  const box=document.getElementById('ne-city-box');
+  if(box) box.style.display = t==='outstation' ? '' : 'none';
+}
+async function toggleTrip(id,cur){
+  const nt = cur==='outstation' ? 'instation' : 'outstation';
+  let city=null;
+  if(nt==='outstation'){
+    city=prompt('Which city / place is this event in?');
+    if(city===null) return;
+    city=city.trim();
+    if(!city){toast('City is required for outstation','er');return}
+  }
+  await sbPatch('events',`id=eq.${id}`,{trip_type:nt,city});
+  toast(nt==='outstation'?('Marked Outstation ✈ '+city):'Marked Instation');
+  loadEvtTable();
 }
 async function closeEvt(id){await sbPatch('events',`id=eq.${id}`,{status:'closed'});loadEvtTable();toast('Event closed')}
 async function delEvt(id,name){if(confirm('Delete '+name+'?')){await sbDelete('events',`id=eq.${id}`);loadEvtTable();}}
@@ -1175,10 +1217,12 @@ async function pgApprovals(el){
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
             ${a.gps_lat?`<a href="https://www.google.com/maps?q=${a.gps_lat},${a.gps_lng}" target="_blank" style="text-decoration:none"><span class="b bg">📍 GPS: ${a.gps_lat},${a.gps_lng} (±${a.gps_acc}m)</span></a>`:`<span class="b br">No GPS</span>`}
             ${a.photo_url?`<span class="b bg">📷 Selfie ✓</span>`:`<span class="b br">No Photo</span>`}
+            ${a.trip_type==='outstation'?`<span class="b ba">✈ Outstation${a.city?' · '+a.city:''}</span>`:`<span class="b bb">○ Instation</span>`}
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
           <button class="btn btn-s bsm" onclick="apprAtt('${a.id}')">✓ Approve</button>
+          <button class="btn btn-b bsm" onclick="toggleAttTrip('${a.id}','${a.trip_type||'instation'}')">⇄ ${a.trip_type==='outstation'?'Make Instation':'Make Outstation'}</button>
           <button class="btn btn-d bsm" onclick="rejAtt('${a.id}')">✗ Reject</button>
         </div>
       </div>
@@ -1186,25 +1230,72 @@ async function pgApprovals(el){
     ${pending.length>1?`<div class="grow"><button class="btn btn-s" onclick="apprAll()">✓ Approve All ${pending.length}</button></div>`:''}
   </div>
   <div class="card"><div class="ctitle">Approved This Month</div>
-    <div class="tw"><table><thead><tr><th>Staff ID</th><th>Selfie</th><th>Event</th><th>Role</th><th>Date</th><th>GPS</th></tr></thead><tbody>
+    <div class="tw"><table><thead><tr><th>Staff ID</th><th>Selfie</th><th>Event</th><th>Role</th><th>Date</th><th>Trip</th><th>Amount</th><th>GPS</th></tr></thead><tbody>
     ${approved.map(a=>`<tr>
       <td>${a.staff_id}</td>
       <td>${a.photo_url?`<img src="${a.photo_url}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`:'—'}</td>
       <td><code>${a.event_id}</code></td><td>${a.role}</td><td>${a.date}</td>
+      <td>${a.trip_type==='outstation'?`<span class="b ba">✈ Out</span>`:`<span class="b bb">In</span>`}</td>
+      <td style="color:var(--gold);font-weight:600">${a.rate_applied!=null&&a.rate_applied!==''?'₹'+Number(a.rate_applied).toLocaleString():'—'}</td>
       <td>${a.gps_lat?`<a href="https://www.google.com/maps?q=${a.gps_lat},${a.gps_lng}" target="_blank" style="color:var(--gold);font-size:11px">📍 View</a>`:'—'}</td>
-    </tr>`).join('')||'<tr><td colspan="6" class="empty">No approved entries</td></tr>'}
+    </tr>`).join('')||'<tr><td colspan="8" class="empty">No approved entries</td></tr>'}
     </tbody></table></div>
   </div>`;
   const badge = document.getElementById('appr-badge');
   if(badge) badge.textContent = pending.length || '';
 }
-async function apprAtt(id){await sbPatch('attendance',`id=eq.${id}`,{status:'approved'});toast('Approved ✓');pgApprovals(document.getElementById('mc'));}
+async function toggleAttTrip(id,cur){
+  const nt = cur==='outstation' ? 'instation' : 'outstation';
+  let city=null;
+  if(nt==='outstation'){
+    city=prompt('Which city / place did this staff travel to?');
+    if(city===null) return;
+    city=city.trim(); if(!city){toast('City is required','er');return}
+  }
+  await sbPatch('attendance',`id=eq.${id}`,{trip_type:nt,city});
+  toast(nt==='outstation'?('Marked Outstation ✈ '+city):'Marked Instation');
+  pgApprovals(document.getElementById('mc'));
+}
+// Approving FREEZES the rupee amount onto the row, so later rate changes
+// never rewrite an already-approved month.
+async function apprAtt(id){
+  const rows = await sbGet('attendance',`id=eq.${id}&select=*`);
+  const a = Array.isArray(rows) && rows[0];
+  if(!a){toast('Record not found','er');return}
+  const tt = a.trip_type==='outstation' ? 'outstation' : 'instation';
+  const mk = mkkey(a.date);
+  let rate = await resolveRate(a.staff_id, mk, tt);
+  if(rate == null){
+    const nm = (window.STAFF_BY_ID && window.STAFF_BY_ID[a.staff_id]?.name) || a.staff_id;
+    const typed = prompt('No outstation rate is set for '+nm+'.\nEnter the outstation amount (₹) for this event:');
+    if(typed === null) return;
+    rate = parseFloat(typed) || 0;
+    if(rate <= 0){toast('Invalid amount','er');return}
+    if(confirm('Save ₹'+rate+' as '+nm+"'s default outstation rate?")){
+      await sbPatch('staff',`id=eq.${a.staff_id}`,{rate_out:rate});
+    }
+  }
+  await sbPatch('attendance',`id=eq.${id}`,{status:'approved',trip_type:tt,rate_applied:rate});
+  toast('Approved ✓ ₹'+Number(rate).toLocaleString());
+  pgApprovals(document.getElementById('mc'));
+}
 async function rejAtt(id){await sbPatch('attendance',`id=eq.${id}`,{status:'rejected'});toast('Rejected','er');pgApprovals(document.getElementById('mc'));}
 async function apprAll(){
   const br=myBranch();
-  const q=br?`status=eq.pending&branch=eq.${br}`:'status=eq.pending';
-  await sbPatch('attendance',q,{status:'approved'});
-  toast('All approved ✓');pgApprovals(document.getElementById('mc'));
+  const q=(br?`branch=eq.${br}&`:'')+'status=eq.pending&select=*';
+  const rows=await sbGet('attendance',q);
+  if(!Array.isArray(rows)||!rows.length){toast('Nothing pending','info');return}
+  toast('Approving '+rows.length+'...','info',4000);
+  let done=0, skipped=0;
+  for(const a of rows){
+    const tt = a.trip_type==='outstation' ? 'outstation' : 'instation';
+    const rate = await resolveRate(a.staff_id, mkkey(a.date), tt);
+    if(rate == null){ skipped++; continue; }
+    await sbPatch('attendance',`id=eq.${a.id}`,{status:'approved',trip_type:tt,rate_applied:rate});
+    done++;
+  }
+  toast('Approved '+done+(skipped?' · '+skipped+' skipped (outstation rate not set — approve those one by one)':'')+' ✓', skipped?'info':'ok', skipped?7000:3000);
+  pgApprovals(document.getElementById('mc'));
 }
 // ═══════════════════════════════════════════════════
 // CLOCK LOG
@@ -1360,7 +1451,7 @@ async function manualLoadLists(){
   const [es,rs,ev] = await Promise.all([
     sbGet('staff',`type=eq.event&active=eq.true&branch=eq.${br}&select=id,name,role,branch&order=name.asc`),
     sbGet('staff',`type=eq.regular&active=eq.true&branch=eq.${br}&select=id,name,branch&order=name.asc`),
-    sbGet('events',`branch=eq.${br}&select=id,name,date,branch&order=date.desc&limit=120`)
+    sbGet('events',`branch=eq.${br}&select=*&order=date.desc&limit=120`)
   ]);
   if(esSel){
     esSel.innerHTML='<option value="">— select staff —</option>';
@@ -1372,7 +1463,7 @@ async function manualLoadLists(){
   }
   if(evSel){
     evSel.innerHTML='<option value="">— select event —</option>';
-    (Array.isArray(ev)?ev:[]).forEach(e=>{_mnEV[e.id]=e; evSel.innerHTML+=`<option value="${e.id}">${e.name} · ${e.date}</option>`;});
+    (Array.isArray(ev)?ev:[]).forEach(e=>{_mnEV[e.id]=e; evSel.innerHTML+=`<option value="${e.id}">${e.name} · ${e.date}${e.trip_type==='outstation'?' · ✈ OUT':''}</option>`;});
   }
 }
 function mnAddRecent(html){
@@ -1396,9 +1487,22 @@ async function submitManualEvent(){
   const dup=await sbGet('attendance',`staff_id=eq.${sid}&event_id=eq.${evId}&date=eq.${date}&select=id`);
   if(Array.isArray(dup)&&dup.length){toast('Entry already exists for this staff, event & date','er');return}
   toast('Saving...','info',2000);
+  const _mev = _mnEV[evId] || {};
+  const _mtt = _mev.trip_type === 'outstation' ? 'outstation' : 'instation';
+  let _mrate = await resolveRate(sid, mkkey(date), _mtt);
+  if(_mrate == null){
+    const typed = prompt('No outstation rate is set for '+(st?.name||sid)+'.\nEnter the outstation amount (₹) for this event:');
+    if(typed === null) return;
+    _mrate = parseFloat(typed) || 0;
+    if(_mrate <= 0){toast('Invalid amount','er');return}
+    if(confirm('Save ₹'+_mrate+' as '+(st?.name||sid)+"'s default outstation rate?")){
+      await sbPatch('staff',`id=eq.${sid}`,{rate_out:_mrate});
+    }
+  }
   const res=await sbPost('attendance',{
     id:'ATT-'+uid(),
     staff_id:sid, event_id:evId, date, time, role:st?.role||'',
+    trip_type:_mtt, city:_mtt==='outstation' ? (_mev.city||null) : null, rate_applied:_mrate,
     status:'approved', branch:brVal,
     photo_url:'', gps_lat:'', gps_lng:'', gps_acc:'MANUAL'
   });
@@ -1441,7 +1545,7 @@ async function pgRates(el){
   loading(el);
   const br = myBranch();
   const mk = mkkey(today());
-  el.innerHTML = `<div class="ptitle">Monthly Rates</div><div class="psub">Set per-event pay rate for each staff. Unchanged = last month rate carries forward.</div>
+  el.innerHTML = `<div class="ptitle">Monthly Rates</div><div class="psub">Set per-event pay rates. Instation = local. Outstation = travel. Unchanged = last month carries forward.</div>
   <div class="info-box">📅 Setting rates for: <b>${mk}</b></div>
   ${!br?`<div class="frow-bar"><select onchange="loadRatesTable(this.value)" id="fr-br"><option value="">All Branches</option>${BRANCHES.map(b=>`<option>${b}</option>`).join('')}</select></div>`:''}
   <div id="rates-t"><div class="loading">Loading</div></div>
@@ -1457,7 +1561,7 @@ async function loadRatesTable(fb){
   if(!Array.isArray(staff)||!staff.length){el.innerHTML='<div class="empty">No event staff found.</div>';return}
   const ratesData = await sbGet('month_rates',`month_key=eq.${encodeURIComponent(mk)}&select=*`);
   const ratesMap = {};
-  if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r.rate);
+  if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r);
   const byBr = {};
   staff.forEach(s=>{if(!byBr[s.branch])byBr[s.branch]=[];byBr[s.branch].push(s);});
   el.innerHTML = Object.entries(byBr).map(([br,list])=>`
@@ -1465,10 +1569,15 @@ async function loadRatesTable(fb){
     ${list.map(s=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
       <div class="av av-e">${ini(s.name)}</div>
       <div style="flex:1"><div style="font-weight:500">${s.name}</div><div style="font-size:12px;color:var(--muted)">${s.role} · <code>${s.id}</code></div></div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="color:var(--muted);font-size:12px">₹</span>
-        <input type="number" id="rate-${s.id}" value="${ratesMap[s.id]!==undefined?ratesMap[s.id]:s.rate||0}" style="width:85px;text-align:right">
-        <span style="font-size:12px;color:var(--muted)">/event</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">○ Instation</div>
+          <input type="number" id="rate-${s.id}" value="${ratesMap[s.id]&&ratesMap[s.id].rate!=null?ratesMap[s.id].rate:s.rate||0}" style="width:85px;text-align:right">
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px">✈ Outstation</div>
+          <input type="number" id="rateout-${s.id}" placeholder="—" value="${ratesMap[s.id]&&ratesMap[s.id].rate_out!=null?ratesMap[s.id].rate_out:(s.rate_out!=null?s.rate_out:'')}" style="width:85px;text-align:right">
+        </div>
       </div>
     </div>`).join('')}
     </div>`).join('');
@@ -1479,9 +1588,14 @@ async function saveRates(){
   if(!Array.isArray(staff)) return;
   const updates = staff.map(s=>{
     const el = document.getElementById('rate-'+s.id);
-    return el ? {id:`${s.id}_${mk}`,staff_id:s.id,month_key:mk,rate:parseFloat(el.value)||0} : null;
+    const eo = document.getElementById('rateout-'+s.id);
+    if(!el) return null;
+    const ro = eo && eo.value!=='' ? (parseFloat(eo.value)||0) : null;
+    return {id:`${s.id}_${mk}`,staff_id:s.id,month_key:mk,rate:parseFloat(el.value)||0,rate_out:ro};
   }).filter(Boolean);
   await sbUpsert('month_rates',updates);
+  // keep the staff master in sync so a missing month still resolves
+  for(const u of updates){ if(u.rate_out!=null) await sbPatch('staff',`id=eq.${u.staff_id}`,{rate_out:u.rate_out}); }
   toast('Rates saved for '+mk+' ✓');
 }
 // ═══════════════════════════════════════════════════
@@ -1522,7 +1636,7 @@ async function loadSalary(){
   ]);
   const staff = Array.isArray(staffData)?staffData:[];
   const ratesMap = {};
-  if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r.rate);
+  if(Array.isArray(ratesData)) ratesData.forEach(r=>ratesMap[r.staff_id]=r);
   const locked = Array.isArray(lockData)&&lockData.length>0;
   const paidMap = {};
   if(Array.isArray(paidData)) paidData.forEach(p=>{ paidMap[p.staff_id]=p.paid===true; });
@@ -1547,12 +1661,23 @@ async function loadSalary(){
     regT+=pay;
     return {s,dw,wd,ea,ded,pay};
   });
+  let outCount=0, outT=0;
   const evtRows = staff.filter(s=>s.type==='event').map(s=>{
-    const rate = ratesMap[s.id]!==undefined ? ratesMap[s.id] : s.rate||0;
+    const rm = ratesMap[s.id] || {};
+    const rate = rm.rate!=null ? Number(rm.rate) : (s.rate||0);
+    const rateOut = rm.rate_out!=null ? Number(rm.rate_out) : (s.rate_out!=null ? Number(s.rate_out) : null);
     const staffAtt = att.filter(a=>a.staff_id===s.id);
-    const pay = staffAtt.length*rate;
+    let pay=0, cIn=0, cOut=0;
+    staffAtt.forEach(a=>{
+      const isOut = a.trip_type==='outstation';
+      // frozen amount wins; otherwise fall back to the current rate
+      const amt = (a.rate_applied!=null && a.rate_applied!=='') ? Number(a.rate_applied)
+                : (isOut ? (rateOut!=null?rateOut:rate) : rate);
+      pay += amt;
+      if(isOut){ cOut++; outCount++; outT+=amt; } else cIn++;
+    });
     evtT+=pay;
-    return {s,rate,cnt:staffAtt.length,pay};
+    return {s,rate,rateOut,cnt:staffAtt.length,cIn,cOut,pay};
   });
   const grand = regT+evtT+extT;
   const payStaffList = [...regRows.map(r=>r.s), ...evtRows.map(r=>r.s)];
@@ -1572,6 +1697,7 @@ async function loadSalary(){
       <div class="sbd"><div class="sbd-v" style="color:var(--green)">₹${regT.toLocaleString()}</div><div class="sbd-l">Regular Staff</div></div>
       <div class="sbd"><div class="sbd-v" style="color:var(--blue)">₹${evtT.toLocaleString()}</div><div class="sbd-l">Event Staff</div></div>
       <div class="sbd"><div class="sbd-v" style="color:var(--amber)">₹${extT.toLocaleString()}</div><div class="sbd-l">Outsourced</div></div>
+      <div class="sbd"><div class="sbd-v" style="color:var(--gold)">₹${outT.toLocaleString()}</div><div class="sbd-l">✈ Outstation (${outCount} shifts)</div></div>
     </div>
   </div>
   <div class="ssep">Regular Staff</div>
@@ -1587,14 +1713,17 @@ async function loadSalary(){
     <td><button class="btn bsm ${pd?'btn-s':'btn-d'}" onclick="toggleSalaryPaid('${s.id}','${mk}','${s.branch}',${pd})">${pd?'✓ Paid':'Mark Paid'}</button></td>
   </tr>`;}).join('')||'<tr><td colspan="9" class="empty">No regular staff.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Event Staff</div>
-  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>Rate</th><th>Events</th><th>Total Pay</th><th>Payment</th></tr></thead>
-  <tbody>${evtRows.map(({s,rate,cnt,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
+  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>○ In Rate</th><th>✈ Out Rate</th><th>Instation</th><th>Outstation</th><th>Events</th><th>Total Pay</th><th>Payment</th></tr></thead>
+  <tbody>${evtRows.map(({s,rate,rateOut,cnt,cIn,cOut,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
     <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-e">${ini(s.name)}</div>${s.name}</div></td>
     <td>${s.branch}</td><td>${s.role}</td><td>₹${rate.toLocaleString()}</td>
+    <td style="color:${rateOut!=null?'var(--amber)':'var(--muted)'}">${rateOut!=null?'₹'+rateOut.toLocaleString():'not set'}</td>
+    <td>${cIn||'—'}</td>
+    <td style="color:${cOut?'var(--amber)':'var(--muted)'};font-weight:${cOut?'600':'400'}">${cOut||'—'}</td>
     <td style="font-weight:600">${cnt}</td>
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
     <td><button class="btn bsm ${pd?'btn-s':'btn-d'}" onclick="toggleSalaryPaid('${s.id}','${mk}','${s.branch}',${pd})">${pd?'✓ Paid':'Mark Paid'}</button></td>
-  </tr>`;}).join('')||'<tr><td colspan="7" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
+  </tr>`;}).join('')||'<tr><td colspan="10" class="empty">No event staff records.</td></tr>'}</tbody></table></div></div>
   <div class="ssep">Outsourced</div>
   <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Branch</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
   <tbody>${ext.map(o=>`<tr>
@@ -1809,22 +1938,43 @@ async function exportMonthlyRich(mo,br){
     const clocks=Array.isArray(clockData)?clockData:[];
     const ext=Array.isArray(extData)?extData:[];
     const paidMap={}; if(Array.isArray(paidData))paidData.forEach(p=>paidMap[p.staff_id]=p.paid===true);
-    const rMap={}; if(Array.isArray(ratesData))ratesData.forEach(r=>rMap[r.staff_id]=r.rate);
+    const rMap={}; if(Array.isArray(ratesData))ratesData.forEach(r=>rMap[r.staff_id]=r);
+    const sById={}; staff.forEach(s=>{sById[s.id]=s;});
     const nameById={}, rateById={};
-    staff.forEach(s=>{nameById[s.id]=s.name; rateById[s.id]=(rMap[s.id]!==undefined?rMap[s.id]:(s.type==='event'?s.rate:s.salary))||0;});
+    staff.forEach(s=>{
+      const rm=rMap[s.id]||{};
+      nameById[s.id]=s.name;
+      rateById[s.id]=(rm.rate!=null?Number(rm.rate):(s.type==='event'?s.rate:s.salary))||0;
+    });
+    // amount for ONE attendance row: frozen rate_applied wins, else in/out rate
+    const rowAmt=(a)=>{
+      if(a.rate_applied!=null && a.rate_applied!=='') return Number(a.rate_applied);
+      const st=sById[a.staff_id]||{}; const rm=rMap[a.staff_id]||{};
+      const base=(rm.rate!=null?Number(rm.rate):(st.rate||0))||0;
+      const ro=rm.rate_out!=null?Number(rm.rate_out):(st.rate_out!=null?Number(st.rate_out):null);
+      return a.trip_type==='outstation' ? (ro!=null?ro:base) : base;
+    };
     const regular=staff.filter(s=>s.type==='regular').map(s=>({
       id:s.id,name:s.name,role:s.role,branch:s.branch,salary:s.salary||0,
       workdays:wd, worked:clocks.filter(c=>c.staff_id===s.id).length,
       status:paidMap[s.id]?'PAID':'UNPAID'
     }));
-    const event=staff.filter(s=>s.type==='event').map(s=>({
-      id:s.id,name:s.name,role:s.role,branch:s.branch,
-      rate:(rMap[s.id]!==undefined?rMap[s.id]:s.rate)||0,
-      events:att.filter(a=>a.staff_id===s.id).length,
-      status:paidMap[s.id]?'PAID':'UNPAID'
-    }));
+    const event=staff.filter(s=>s.type==='event').map(s=>{
+      const rows=att.filter(a=>a.staff_id===s.id);
+      const total=rows.reduce((t,a)=>t+rowAmt(a),0);
+      const rm=rMap[s.id]||{};
+      const base=(rm.rate!=null?Number(rm.rate):s.rate)||0;
+      // blended rate keeps the sheet's =rate*events formula live AND correct
+      // when a staff worked a mix of instation and outstation events
+      const eff = rows.length ? Math.round((total/rows.length)*100)/100 : base;
+      return {
+        id:s.id,name:s.name,role:s.role,branch:s.branch,
+        rate:eff, events:rows.length,
+        status:paidMap[s.id]?'PAID':'UNPAID'
+      };
+    });
     const outsourced=ext.map(o=>({id:o.id,name:o.name,role:o.role,branch:o.branch,date:o.date,amount:o.amount||0,paid:o.paid?'PAID':'UNPAID'}));
-    const attendance=att.map(a=>({sid:a.staff_id,date:a.date,time:a.time||'',role:a.role,branch:a.branch,status:a.status,lat:a.gps_lat,lng:a.gps_lng,photo:a.photo_url?'YES':'NO',name:nameById[a.staff_id]||'',rate:(a.staff_id in rateById?rateById[a.staff_id]:0)}));
+    const attendance=att.map(a=>({sid:a.staff_id,date:a.date,time:a.time||'',role:a.role,branch:a.branch,status:a.status,lat:a.gps_lat,lng:a.gps_lng,photo:a.photo_url?'YES':'NO',name:nameById[a.staff_id]||'',trip:a.trip_type==='outstation'?'OUTSTATION':'INSTATION',city:a.city||'',rate:rowAmt(a)}));
     const input={
       monthLabel:mo, branch:br||'',
       generated:'Generated: '+new Date().toLocaleString('en-GB',{day:'numeric',month:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})+'  ·  Figures update automatically from Regular Staff, Event Staff and Outsourced sheets',
@@ -2141,6 +2291,7 @@ async function pgMark(el){
     sbGet('attendance',`staff_id=eq.${s.id}&date=eq.${d}&select=*`)
   ]);
   const todayEvents = Array.isArray(evts)?evts:[];
+  window._EVMAP = {}; todayEvents.forEach(e=>{window._EVMAP[e.id]=e;});
   const alreadyMarked = Array.isArray(already)&&already[0];
   window._photo = null;
   window._gps = null;
@@ -2157,7 +2308,7 @@ async function pgMark(el){
     <div class="frow"><label>Select Event</label>
       <select id="mk-ev">
         <option value="">— select today's event —</option>
-        ${todayEvents.map(e=>`<option value="${e.id}">${e.name}</option>`).join('')}
+        ${todayEvents.map(e=>`<option value="${e.id}">${e.name}${e.trip_type==='outstation'?' · ✈ OUTSTATION'+(e.city?' ('+e.city+')':''):''}</option>`).join('')}
         ${!todayEvents.length?'<option disabled>No open events today in your branch</option>':''}
       </select>
     </div>
@@ -2246,8 +2397,11 @@ async function submitMark(){
   const photoUrl = await uploadPhoto(window._photoBlob, filename);
   if(!photoUrl){toast('Photo upload failed. Check internet & try again.','er',5000);return;}
   toast('Saving attendance...','info');
+  const _ev = (window._EVMAP||{})[ev] || {};
+  const _tt = _ev.trip_type === 'outstation' ? 'outstation' : 'instation';
   const res = await sbPost('attendance',{
     id:'ATT-'+uid(),staff_id:CU.id,event_id:ev,date:today(),time,role,
+    trip_type:_tt, city:_tt==='outstation' ? (_ev.city||null) : null,
     status:'pending',branch:CU.branch,photo_url:photoUrl,
     gps_lat:window._gps.lat,gps_lng:window._gps.lng,gps_acc:String(window._gps.acc)
   });
@@ -2286,22 +2440,31 @@ async function pgMyPay(el){
   const lastDay = monthEnd(ym);
   if(s.type==='event'){
     const [rateData,attData,pendData] = await Promise.all([
-      sbGet('month_rates',`staff_id=eq.${s.id}&month_key=eq.${encodeURIComponent(mk)}&select=rate`),
-      sbGet('attendance',`staff_id=eq.${s.id}&status=eq.approved&date=gte.${ym}-01&date=lte.${ym}-${lastDay}&select=id`),
+      sbGet('month_rates',`staff_id=eq.${s.id}&month_key=eq.${encodeURIComponent(mk)}&select=rate,rate_out`),
+      sbGet('attendance',`staff_id=eq.${s.id}&status=eq.approved&date=gte.${ym}-01&date=lte.${ym}-${lastDay}&select=id,trip_type,rate_applied`),
       sbGet('attendance',`staff_id=eq.${s.id}&status=eq.pending&select=id`)
     ]);
-    const rate = Array.isArray(rateData)&&rateData[0] ? rateData[0].rate : s.rate||0;
-    const approved = Array.isArray(attData)?attData.length:0;
+    const rate = Array.isArray(rateData)&&rateData[0]&&rateData[0].rate!=null ? Number(rateData[0].rate) : s.rate||0;
+    const rateOut = Array.isArray(rateData)&&rateData[0]&&rateData[0].rate_out!=null ? Number(rateData[0].rate_out)
+                  : (s.rate_out!=null ? Number(s.rate_out) : null);
+    const attRows = Array.isArray(attData)?attData:[];
+    const approved = attRows.length;
     const pending = Array.isArray(pendData)?pendData.length:0;
-    const pay = approved*rate;
+    let pay=0, cOut=0;
+    attRows.forEach(a=>{
+      const isOut = a.trip_type==='outstation';
+      if(isOut) cOut++;
+      pay += (a.rate_applied!=null&&a.rate_applied!=='') ? Number(a.rate_applied)
+           : (isOut ? (rateOut!=null?rateOut:rate) : rate);
+    });
     el.innerHTML = `<div style="max-width:400px">
     <div class="ptitle">My Pay</div><div class="psub">${mk}</div>
     <div class="sal-hero"><div class="sal-total">₹${pay.toLocaleString()}</div>
-      <div class="sal-lbl">${approved} events × ₹${rate.toLocaleString()}</div>
+      <div class="sal-lbl">${approved} events${cOut?` · ${cOut} outstation ✈`:''}</div>
     </div>
     <div class="card">
       ${[['Staff ID',`<code>${s.id}</code>`],['Role',s.role],['Branch',s.branch],['Type','<span class="b bb">Event-based</span>'],
-        ['Rate this month','₹'+rate.toLocaleString()+' / event'],['Approved events','<b style="color:var(--green)">'+approved+'</b>'],['Pending',`<span style="color:var(--amber)">${pending} entries</span>`]]
+        ['Instation rate','₹'+rate.toLocaleString()+' / event'],['Outstation rate',rateOut!=null?'₹'+rateOut.toLocaleString()+' / event':'<span style="color:var(--muted)">not set</span>'],['Approved events','<b style="color:var(--green)">'+approved+'</b>'],['Outstation events',cOut?'<b style="color:var(--amber)">'+cOut+' ✈</b>':'—'],['Pending',`<span style="color:var(--amber)">${pending} entries</span>`]]
         .map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">${l}</span><span>${v}</span></div>`).join('')}
     </div>
     <div style="font-size:11px;color:var(--muted);text-align:center">Final amount confirmed after admin approval</div>
