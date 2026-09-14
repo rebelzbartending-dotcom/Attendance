@@ -649,8 +649,8 @@ function buildNav(){
     {sep:'Account'},{id:'changepw',ic:'🔑',lbl:'Change Password'},
   ];
   const staff = CU.type === 'regular' ?
-    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'mytravel',ic:'✈',lbl:'My Travel'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}] :
-    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myrecords',ic:'◈',lbl:'My Records'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'mytravel',ic:'✈',lbl:'My Travel'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'}];
+    [{id:'clockin',ic:'◷',lbl:'Clock In/Out'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'mytravel',ic:'✈',lbl:'My Travel'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'},{id:'changepw',ic:'🔑',lbl:'Change PIN'}] :
+    [{id:'markpresent',ic:'✦',lbl:'Mark Present'},{id:'myatt',ic:'◈',lbl:'My Attendance'},{id:'mypay',ic:'◉',lbl:'My Pay'},{id:'mytravel',ic:'✈',lbl:'My Travel'},{id:'myhistory',ic:'🗓',lbl:'Pay History'},{id:'myprofile',ic:'🪪',lbl:'My Profile'},{id:'changepw',ic:'🔑',lbl:'Change PIN'}];
   let items;
   if(CU.userType === 'admin'){ items = isManager() ? mgr : adm; } else { items = staff; }
   nav.innerHTML = items.map(item => {
@@ -833,6 +833,7 @@ async function loadStaffTable(){
     <td><div style="display:flex;gap:5px">
       <button class="btn bsm" style="background:var(--gold);color:var(--dk)" onclick="viewStaffKyc('${s.id}')">👁 View</button>
       <button class="btn bsm btn-b" onclick="editStaff('${s.id}')">Edit</button>
+      <button class="btn bsm" onclick="resetStaffPin('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">🔑 PIN</button>
       <button class="btn bsm btn-d" onclick="rmStaff('${s.id}','${s.name}')">Remove</button>
     </div></td>
   </tr>`).join('')}</tbody></table>`;
@@ -979,6 +980,7 @@ async function doResetAdmPw(id,name){
 // CHANGE PASSWORD (own account) — all admins & managers
 // ═══════════════════════════════════════════════════
 async function pgChangePw(el){
+  if(CU.userType==='staff') return pgStaffChangePin(el);
   const isHardcodedOnly = !!HARDCODED_ADMINS[CU.id] && (CU.id==='master');
   el.innerHTML = `
   <div class="ptitle">Change Password</div>
@@ -1041,6 +1043,62 @@ async function changeMyPassword(){
   } else {
     msg.textContent='Update failed. Check your internet and try again.';
   }
+}
+// ── STAFF: change own login PIN (self-service, verifies current PIN first) ──
+async function pgStaffChangePin(el){
+  el.innerHTML = `
+  <div class="ptitle">Change PIN</div>
+  <div class="psub">Set a private login PIN that only you know.</div>
+  <div style="max-width:420px">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:1rem">
+        <div class="av ${CU.type==='regular'?'av-r':'av-e'}">${ini(CU.name)}</div>
+        <div><div style="font-weight:600">${CU.name}</div><div style="font-size:12px;color:var(--muted)">${CU.role} · <code>${CU.id}</code></div></div>
+      </div>
+      <div class="frow"><label>Current PIN</label><input type="password" id="sp-cur" inputmode="numeric" maxlength="6" placeholder="Your PIN now"></div>
+      <div class="frow"><label>New PIN</label><input type="password" id="sp-new" inputmode="numeric" maxlength="6" placeholder="4–6 digits"></div>
+      <div class="frow"><label>Confirm New PIN</label><input type="password" id="sp-cf" inputmode="numeric" maxlength="6" placeholder="Re-enter new PIN" onkeydown="if(event.key==='Enter')changeMyPin()"></div>
+      <p id="sp-msg" style="font-size:12px;margin:4px 0 10px;min-height:14px;color:var(--red)"></p>
+      <button class="btn btn-p" onclick="changeMyPin()">Update PIN</button>
+    </div>
+    <div class="info-box">🔒 Only you can change your PIN — it asks for your current one first. Choose a PIN nobody else knows. If you ever forget it, ask your admin to reset it.</div>
+  </div>`;
+}
+async function changeMyPin(){
+  const cur=(document.getElementById('sp-cur').value||'').trim();
+  const nw=(document.getElementById('sp-new').value||'').trim();
+  const cf=(document.getElementById('sp-cf').value||'').trim();
+  const msg=document.getElementById('sp-msg'); msg.style.color='var(--red)';
+  if(!cur||!nw||!cf){msg.textContent='Please fill all three fields.';return}
+  if(!/^\d{4,6}$/.test(nw)){msg.textContent='New PIN must be 4–6 digits.';return}
+  if(nw!==cf){msg.textContent='New PINs do not match.';return}
+  if(nw===cur){msg.textContent='New PIN must be different from the current one.';return}
+  const chk=await sbGet('staff',`id=eq.${CU.id}&pin=eq.${encodeURIComponent(cur)}&active=eq.true&select=id`);
+  if(!(Array.isArray(chk)&&chk.length>0)){msg.textContent='Current PIN is incorrect.';return}
+  const res=await sbPatch('staff',`id=eq.${CU.id}`,{pin:nw});
+  if(Array.isArray(res)&&res.length>0){
+    CU.pin=nw;
+    msg.style.color='var(--green)';
+    msg.textContent='✓ PIN changed. Use it next time you log in.';
+    document.getElementById('sp-cur').value='';document.getElementById('sp-new').value='';document.getElementById('sp-cf').value='';
+    toast('PIN updated ✓');
+  } else { msg.textContent='Update failed. Check internet and try again.'; }
+}
+// ── ADMIN: reset a staff member's PIN (safety net for forgotten PINs) ──
+function resetStaffPin(id,name){
+  openModal('Reset PIN — '+name, `
+    <div class="psub" style="margin-bottom:10px">Set a temporary PIN for <b>${name}</b> (<code>${id}</code>). Tell them this PIN — they can change it themselves from “Change PIN”.</div>
+    <div class="frow"><label>New PIN</label><input type="text" id="rp-new" inputmode="numeric" maxlength="6" placeholder="4–6 digits"></div>
+    <p id="rp-msg" style="font-size:12px;margin:4px 0 10px;min-height:14px;color:var(--red)"></p>
+    <div class="grow"><button class="btn btn-p" onclick="doResetStaffPin('${id}','${name.replace(/'/g,"\\'")}')">Set PIN</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+}
+async function doResetStaffPin(id,name){
+  const nw=(document.getElementById('rp-new').value||'').trim();
+  const msg=document.getElementById('rp-msg'); msg.style.color='var(--red)';
+  if(!/^\d{4,6}$/.test(nw)){msg.textContent='PIN must be 4–6 digits.';return}
+  const res=await sbPatch('staff',`id=eq.${id}`,{pin:nw});
+  if(Array.isArray(res)&&res.length>0){ closeModal(); toast('PIN reset for '+name+' ✓'); }
+  else { msg.textContent='Reset failed. Check internet and try again.'; }
 }
 // ═══════════════════════════════════════════════════
 // EVENTS
@@ -2266,33 +2324,159 @@ async function doClock(type, eid){
     toast('Clocked out at '+t+' ✓');pgClockIn(document.getElementById('mc'));
   }
 }
+// ── My Attendance CALENDAR (regular + event staff) ──
+const CAL_CSS = `<style>
+.cal-wrap{max-width:440px}
+.cal-mbar{display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px}
+.cal-mbar b{font-size:17px;font-family:var(--ff,inherit)}
+.cal-mb{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:var(--dk2);color:var(--text);font-size:16px;cursor:pointer}
+.cal-mb:disabled{opacity:.3;cursor:default}
+.cal-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.cal-tile{background:linear-gradient(160deg,var(--dk3),var(--dk2));border:1px solid var(--border);border-radius:14px;padding:13px 14px}
+.cal-tl{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.cal-tv{font-size:26px;font-weight:700;margin-top:5px;line-height:1;font-variant-numeric:tabular-nums}
+.cal-tf{font-size:11px;color:var(--muted);margin-top:4px}
+.cal-meta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+.cal-chip{font-size:11px;color:var(--muted);background:var(--dk2);border:1px solid var(--border);border-radius:99px;padding:4px 10px}
+.cal-chip b{color:var(--text)}
+.cal-gh{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:5px}
+.cal-gh span{text-align:center;font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-cell{aspect-ratio:1;border-radius:9px;border:1px solid transparent;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;position:relative;font-variant-numeric:tabular-nums}
+.cal-cell.blank{cursor:default}
+.cal-cell.present{background:rgba(70,190,126,.15);color:var(--green);border-color:rgba(70,190,126,.35)}
+.cal-cell.worked{background:linear-gradient(160deg,rgba(227,184,95,.22),rgba(70,190,126,.14));color:var(--gold-l,#F4D183);border-color:rgba(227,184,95,.45)}
+.cal-cell.paidoff{background:rgba(227,184,95,.15);color:var(--gold);border-color:rgba(227,184,95,.4)}
+.cal-cell.absent{background:rgba(216,100,110,.15);color:var(--red);border-color:rgba(216,100,110,.4)}
+.cal-cell.incomplete,.cal-cell.pending{background:rgba(224,166,75,.15);color:var(--amber);border-color:rgba(224,166,75,.4)}
+.cal-cell.week{color:var(--muted2)}
+.cal-cell.future,.cal-cell.off{color:var(--muted2);opacity:.55}
+.cal-cell.sel{box-shadow:0 0 0 2px var(--gold)}
+.cal-cell .evd{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--gold)}
+.cal-legend{display:flex;flex-wrap:wrap;gap:8px 13px;margin-top:12px;padding-top:11px;border-top:1px solid var(--border)}
+.cal-legend span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.cal-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.cal-detail{margin-top:12px;background:var(--dk3);border:1px solid var(--border2);border-radius:12px;padding:11px 14px;min-height:46px;font-size:13px;color:var(--text)}
+.cal-detail b{color:var(--gold-l,#F4D183)}
+</style>`;
 async function pgMyAtt(el){
+  if(!window._calYM){ const n=new Date(); window._calYM={y:n.getFullYear(), m:n.getMonth()}; }
+  window._calSel=null;
+  await renderCal(el);
+}
+function calShift(dir){
+  const s=window._calYM; let y=s.y, m=s.m+dir;
+  if(m<0){m=11;y--;} if(m>11){m=0;y++;}
+  const now=new Date();
+  if(y>now.getFullYear()||(y===now.getFullYear()&&m>now.getMonth())) return;
+  window._calYM={y,m}; window._calSel=null;
+  renderCal(document.getElementById('mc'));
+}
+function calPick(d){
+  window._calSel=d;
+  document.querySelectorAll('.cal-cell').forEach(c=>c.classList.toggle('sel', c.dataset.d===String(d)));
+  const info=(window._calMap&&window._calMap[d])||null;
+  const el=document.getElementById('cal-detail'); if(!el) return;
+  if(!info||info.status==='blank'){ el.innerHTML='<span style="color:var(--muted2)">Tap a date to see details</span>'; return; }
+  el.innerHTML=`<b>${info.dd} ${window._calMonLbl}</b> — <b style="color:var(--text)">${info.label}</b>${info.sub?`<br><span style="color:var(--muted);font-size:12px">${info.sub}</span>`:''}`;
+}
+async function renderCal(el){
   loading(el);
-  const mk = mkkey(today());
-  const d = today();
-  const ym = d.substring(0,7);
-  const logs = await sbGet('clocklog',`staff_id=eq.${CU.id}&date=gte.${ym}-01&date=lte.${ym}-${monthEnd(ym)}&select=*`);
-  const logList = Array.isArray(logs)?logs:[];
-  const dw = logList.filter(c=>c.status==='complete').length;
-  const wd = getWorkDays(new Date().getFullYear(),new Date().getMonth());
-  let totalMins = 0;
-  logList.filter(c=>c.status==='complete').forEach(c=>{
-    if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);let m=(oh*60+om)-(ih*60+im);if(m<0)m+=1440;totalMins+=m;}
-  });
-  const totalHrs = (totalMins/60).toFixed(1);
-  el.innerHTML = `<div class="ptitle">My Attendance</div><div class="psub">${mk}</div>
-  <div class="sgrid">
-    <div class="stat"><div class="sv" style="color:var(--green)">${dw}</div><div class="sl">Days Present</div></div>
-    <div class="stat"><div class="sv" style="color:var(--gold)">${totalHrs}h</div><div class="sl">Total Hours Worked</div></div>
-    <div class="stat"><div class="sv" style="color:${Math.max(0,wd-dw)>4?'var(--red)':'var(--muted)'}">${Math.max(0,wd-dw)}</div><div class="sl">Offs Used (4 allowed)</div></div>
-    <div class="stat"><div class="sv" style="color:var(--amber)">${logList.filter(c=>c.status==='incomplete').length}</div><div class="sl">Incomplete</div></div>
-  </div>
-  <div class="card"><div class="ctitle">Daily Log</div><div class="tw"><table><thead><tr><th>Date</th><th>Day</th><th>In</th><th>Out</th><th>Hours</th><th>Status</th></tr></thead>
-  <tbody>${logList.sort((a,b)=>b.date.localeCompare(a.date)).map(c=>{
-    const day=new Date(c.date).toLocaleDateString('en-IN',{weekday:'short'});
-    let hrs='—';if(c.in_time&&c.out_time){const[ih,im]=c.in_time.split(':').map(Number);const[oh,om]=c.out_time.split(':').map(Number);let mins=(oh*60+om)-(ih*60+im);if(mins<0)mins+=1440;hrs=(mins/60).toFixed(1)+'h';}
-    return `<tr><td>${c.date}</td><td>${day}</td><td style="color:var(--green)">${c.in_time||'—'}</td><td style="color:var(--amber)">${c.out_time||'—'}</td><td>${hrs}</td><td><span class="b ${c.status==='complete'?'bg':c.status==='incomplete'?'ba':'br'}">${c.status}</span></td></tr>`;
-  }).join('')||'<tr><td colspan="6" class="empty">No records</td></tr>'}</tbody></table></div></div>`;
+  const {y,m}=window._calYM;
+  const dim=new Date(y,m+1,0).getDate();
+  const m2=String(m+1).padStart(2,'0');
+  const first=`${y}-${m2}-01`, last=`${y}-${m2}-${String(dim).padStart(2,'0')}`;
+  const monLbl=new Date(y,m,1).toLocaleDateString('en-IN',{month:'long',year:'numeric'});
+  const monKey=new Date(y,m,1).toLocaleString('default',{month:'long',year:'numeric'});
+  window._calMonLbl=monLbl;
+  const now=new Date(); const todayStr=today();
+  const isCur=(y===now.getFullYear()&&m===now.getMonth());
+  const wd=getWorkDays(y,m);
+  const map={};
+  let daysAtt=0, totalPay=0, t1lab='', t1foot='', t2foot='', metaHtml='', legendHtml='';
+
+  if(CU.type==='regular'){
+    const logs=await sbGet('clocklog',`staff_id=eq.${CU.id}&date=gte.${first}&date=lte.${last}&select=*`);
+    const L=Array.isArray(logs)?logs:[]; const byD={}; L.forEach(c=>{byD[c.date]=c;});
+    const dw=L.filter(c=>c.status==='complete').length; daysAtt=dw;
+    const ea=Math.max(0,wd-4-dw); const dr=(CU.salary||0)/wd; const ded=Math.round(ea*dr);
+    t1lab='Days Present'; t1foot=`of ${wd} working days`;
+    if(isCur){ totalPay=(CU.salary||0); t2foot='in progress · final at month-end'; }
+    else { totalPay=(CU.salary||0)-ded; t2foot= ded>0 ? `salary − ₹${ded.toLocaleString()}` : 'full salary, no cut'; }
+    let absN=0;
+    for(let d=1; d<=dim; d++){
+      const ds=`${y}-${m2}-${String(d).padStart(2,'0')}`; const dow=new Date(y,m,d).getDay();
+      const future=isCur && ds>todayStr; const rec=byD[ds];
+      let status,label,sub='';
+      if(rec && rec.status==='complete'){ status='present'; label='Present'; sub=(rec.in_time||rec.out_time)?`In ${rec.in_time||'—'} · Out ${rec.out_time||'—'}`:''; }
+      else if(rec && rec.status==='incomplete'){ status='incomplete'; label='Incomplete'; sub='Clocked in, no clock-out'; }
+      else if(dow===0){ status='week'; label='Week off'; sub='Sunday'; }
+      else if(future){ status='future'; label='Upcoming'; }
+      else { absN++; if(absN<=4){ status='paidoff'; label='Paid off'; sub='Within your 4 free offs'; } else { status='absent'; label='Absent'; sub='Counts toward deduction'; } }
+      map[d]={status,label,sub,dd:d};
+    }
+    metaHtml=`<span class="cal-chip">Present <b>${dw}</b></span><span class="cal-chip">Offs used <b>${Math.min(absN,4)}/4</b></span>${(!isCur&&ea>0)?`<span class="cal-chip">Extra absent <b>${ea}</b></span>`:''}${isCur?`<span class="cal-chip" style="color:var(--muted2)">month in progress</span>`:''}`;
+    legendHtml='<span><i style="background:rgba(70,190,126,.35)"></i>Present</span><span><i style="background:rgba(227,184,95,.35)"></i>Paid off</span><span><i style="background:rgba(216,100,110,.35)"></i>Absent</span><span><i style="background:var(--dk4)"></i>Sunday</span>';
+  } else {
+    const [attData, rateData, evData] = await Promise.all([
+      sbGet('attendance',`staff_id=eq.${CU.id}&date=gte.${first}&date=lte.${last}&select=*`),
+      sbGet('month_rates',`staff_id=eq.${CU.id}&month_key=eq.${encodeURIComponent(monKey)}&select=rate,rate_out`),
+      sbGet('events',`date=gte.${first}&date=lte.${last}&select=id,name,date`)
+    ]);
+    const A=Array.isArray(attData)?attData:[];
+    const rate=(Array.isArray(rateData)&&rateData[0]&&rateData[0].rate!=null)?Number(rateData[0].rate):(CU.rate||0);
+    const rateOut=(Array.isArray(rateData)&&rateData[0]&&rateData[0].rate_out!=null)?Number(rateData[0].rate_out):(CU.rate_out!=null?Number(CU.rate_out):null);
+    const evNm={}; (Array.isArray(evData)?evData:[]).forEach(e=>{evNm[e.id]=e.name;});
+    const approved=A.filter(a=>a.status==='approved'); daysAtt=approved.length;
+    let pay=0, outC=0;
+    approved.forEach(a=>{ const isOut=a.trip_type==='outstation'; if(isOut)outC++;
+      pay += (a.rate_applied!=null&&a.rate_applied!=='')?Number(a.rate_applied):(isOut?(rateOut!=null?rateOut:rate):rate); });
+    totalPay=pay;
+    t1lab='Days Attended'; t1foot=`${approved.length} event${approved.length===1?'':'s'}${outC?` · ${outC} ✈`:''}`;
+    t2foot='confirmed after approval';
+    const byD={}; A.forEach(a=>{ (byD[a.date]=byD[a.date]||[]).push(a); });
+    for(let d=1; d<=dim; d++){
+      const ds=`${y}-${m2}-${String(d).padStart(2,'0')}`; const future=isCur && ds>todayStr; const recs=byD[ds];
+      let status,label,sub='',ev=false;
+      if(recs && recs.some(a=>a.status==='approved')){ status='worked'; label='Worked'; ev=true; const r=recs.find(a=>a.status==='approved'); sub=(evNm[r.event_id]||('Event '+r.event_id)); }
+      else if(recs && recs.some(a=>a.status==='pending')){ status='pending'; label='Pending approval'; const r=recs.find(a=>a.status==='pending'); sub=(evNm[r.event_id]||('Event '+r.event_id)); }
+      else if(future){ status='future'; label='Upcoming'; }
+      else { status='off'; label='No event'; }
+      map[d]={status,label,sub,dd:d,ev};
+    }
+    const pendN=A.filter(a=>a.status==='pending').length;
+    metaHtml=`<span class="cal-chip">Events <b>${approved.length}</b></span>${outC?`<span class="cal-chip">Outstation <b>${outC} ✈</b></span>`:''}${pendN?`<span class="cal-chip">Pending <b>${pendN}</b></span>`:''}`;
+    legendHtml='<span><i style="background:rgba(227,184,95,.45)"></i>Worked</span><span><i style="background:rgba(224,166,75,.35)"></i>Pending</span>';
+  }
+  window._calMap=map;
+
+  const lead=new Date(y,m,1).getDay();
+  let cells='';
+  for(let i=0;i<lead;i++) cells+='<div class="cal-cell blank"></div>';
+  for(let d=1; d<=dim; d++){ const info=map[d];
+    cells+=`<div class="cal-cell ${info.status}" data-d="${d}" onclick="calPick(${d})">${d}${info.ev?'<span class="evd"></span>':''}</div>`; }
+  const canNext=!(y===now.getFullYear()&&m===now.getMonth());
+
+  el.innerHTML = `${CAL_CSS}
+  <div class="cal-wrap">
+    <div class="ptitle">My Attendance</div>
+    <div class="cal-mbar">
+      <button class="cal-mb" onclick="calShift(-1)">&lsaquo;</button>
+      <b>${monLbl}</b>
+      <button class="cal-mb" onclick="calShift(1)" ${canNext?'':'disabled'}>&rsaquo;</button>
+    </div>
+    <div class="cal-tiles">
+      <div class="cal-tile"><div class="cal-tl">${t1lab}</div><div class="cal-tv" style="color:var(--green)">${daysAtt}</div><div class="cal-tf">${t1foot}</div></div>
+      <div class="cal-tile"><div class="cal-tl">Total Payment</div><div class="cal-tv" style="color:var(--gold)">₹${(totalPay||0).toLocaleString()}</div><div class="cal-tf">${t2foot}</div></div>
+    </div>
+    <div class="cal-meta">${metaHtml}</div>
+    <div class="card" style="padding:12px">
+      <div class="cal-gh"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+      <div class="cal-grid">${cells}</div>
+      <div class="cal-legend">${legendHtml}</div>
+    </div>
+    <div class="cal-detail" id="cal-detail"><span style="color:var(--muted2)">Tap a date to see details</span></div>
+  </div>`;
 }
 // ═══════════════════════════════════════════════════
 // MARK PRESENT (Event Staff)
