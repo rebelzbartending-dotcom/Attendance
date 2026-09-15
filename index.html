@@ -2853,7 +2853,7 @@ async function pgMyTravel(el){
     <div class="frow"><label>Note (where / what)</label><input id="tl-note" placeholder="e.g. Bus to Rajahmundry"></div>
     <div style="background:var(--dk3);border-radius:12px;padding:.85rem;border:1px solid var(--border2);margin:.75rem 0">
       <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem;font-weight:600">📸 Bill Photo</div>
-      <input type="file" accept="image/*" capture="environment" onchange="tlPickBill(this)" style="width:100%">
+      <input type="file" accept="image/*" onchange="tlPickBill(this)" style="width:100%">
       <img id="tl-bill-img" style="display:none;max-width:160px;border-radius:8px;margin-top:.6rem;border:2px solid var(--gold)">
       <div id="tl-bill-ok" style="display:none;font-size:12px;color:var(--green);margin-top:5px">✓ Bill attached</div>
     </div>
