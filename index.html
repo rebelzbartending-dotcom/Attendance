@@ -2112,6 +2112,36 @@ async function genMySlip(){
   catch(e){ console.error(e); toast('Failed: '+(e&&e.message||e),'er',7000); }
 }
 
+async function genHistSlip(mk){
+  const s=CU; if(!s){ toast('Please log in','er'); return; }
+  toast('Preparing your '+mk+' slip…','info',5000);
+  try{
+    const dd=new Date(mk+' 1'); const yi=dd.getFullYear(); const mi=dd.getMonth();
+    const m2=String(mi+1).padStart(2,'0'); const ld=String(new Date(yi,mi+1,0).getDate()).padStart(2,'0');
+    const paidRes=await sbGet('salary_paid',`staff_id=eq.${s.id}&month_key=eq.${encodeURIComponent(mk)}&select=paid`);
+    const paid=Array.isArray(paidRes)&&paidRes[0]?paidRes[0].paid===true:false;
+    let o;
+    if(s.type==='event'){
+      const [rateData,attData]=await Promise.all([
+        sbGet('month_rates',`staff_id=eq.${s.id}&month_key=eq.${encodeURIComponent(mk)}&select=rate,rate_out`),
+        sbGet('attendance',`staff_id=eq.${s.id}&status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}&select=trip_type,rate_applied`)
+      ]);
+      const rate=Array.isArray(rateData)&&rateData[0]&&rateData[0].rate!=null?Number(rateData[0].rate):(s.rate||0);
+      const rateOut=Array.isArray(rateData)&&rateData[0]&&rateData[0].rate_out!=null?Number(rateData[0].rate_out):(s.rate_out!=null?Number(s.rate_out):null);
+      const rows=Array.isArray(attData)?attData:[]; let pay=0,cOut=0;
+      rows.forEach(a=>{ const isOut=a.trip_type==='outstation'; if(isOut)cOut++; pay+=(a.rate_applied!=null&&a.rate_applied!=='')?Number(a.rate_applied):(isOut?(rateOut!=null?rateOut:rate):rate); });
+      const cnt=rows.length;
+      o={type:'event',name:s.name,id:s.id,role:s.role||'Event Staff',branch:s.branch,mk,paid,cIn:Math.max(0,cnt-cOut),cOut,cnt,gross:pay,adj:0,pay};
+    } else {
+      const clk=await sbGet('clocklog',`staff_id=eq.${s.id}&status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}&select=id`);
+      const dw=Array.isArray(clk)?clk.length:0; const wd=getWorkDays(yi,mi); const ea=Math.max(0,wd-4-dw); const dr=(s.salary||0)/wd; const ded=Math.round(ea*dr); const pay=(s.salary||0)-ded;
+      o={type:'regular',name:s.name,id:s.id,role:s.role||'Staff',branch:s.branch,mk,paid,salary:s.salary||0,wd,dw,ea,ded,dr,adj:0,pay};
+    }
+    await slipsToPDF([o],'Rebelz_Salary_Slip_'+s.name.split(' ').join('_')+'_'+slipMonAbbr(mk)+'.pdf');
+    toast('Slip downloaded ✓','ok');
+  }catch(e){ console.error(e); toast('Failed: '+(e&&e.message||e),'er',7000); }
+}
+
 async function pgReports(el){
   loading(el);
   // ── Build last 12 months list ──
@@ -3279,7 +3309,7 @@ async function pgMyHistory(el){
         <td style="font-weight:600">${c.cnt}</td>
         ${isEvent?`<td>₹${(c.rate||0).toLocaleString()}</td>`:`<td>₹${(s.salary||0).toLocaleString()}</td><td style="color:${c.ded>0?'var(--red)':'var(--muted)'}">${c.ded>0?'−₹'+c.ded.toLocaleString():'—'}</td>`}
         <td style="font-weight:700;color:var(--gold)">₹${c.pay.toLocaleString()}</td>
-        <td><span class="b ${paid?'bg':'ba'}">${paid?'Paid ✓':'In progress'}</span></td>
+        <td><span class="b ${paid?'bg':'ba'}">${paid?'Paid ✓':'In progress'}</span> <button class="btn bsm" title="Download salary slip" onclick="genHistSlip('${mk}')">🧾 Slip</button></td>
       </tr>`;
     }).join('')||'<tr><td colspan="'+(isEvent?5:6)+'" class="empty">No history yet</td></tr>'}</tbody></table>
   </div></div>
