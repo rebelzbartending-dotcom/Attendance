@@ -2304,14 +2304,19 @@ async function exportMonthlyRich(mo,br){
     const m2=String(mi+1).padStart(2,'0');
     const ld=String(new Date(yi,mi+1,0).getDate()).padStart(2,'0');
     let staffQ='active=eq.true&select=*'; if(br)staffQ+=`&branch=eq.${br}`;
-    const [staffData,attData,clockData,extData,ratesData,paidData]=await Promise.all([
+    const [staffData,attData,clockData,extData,ratesData,paidData,travData]=await Promise.all([
       sbGet('staff',staffQ),
       sbGet('attendance',`status=eq.approved&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('clocklog',`status=eq.complete&date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('outsourced',`date=gte.${yi}-${m2}-01&date=lte.${yi}-${m2}-${ld}${br?`&branch=eq.${br}`:''}&select=*`),
       sbGet('month_rates',`month_key=eq.${encodeURIComponent(mo)}&select=*`),
-      sbGet('salary_paid',`month_key=eq.${encodeURIComponent(mo)}${br?`&branch=eq.${br}`:''}&select=*`)
+      sbGet('salary_paid',`month_key=eq.${encodeURIComponent(mo)}${br?`&branch=eq.${br}`:''}&select=*`),
+      sbGet('travel_ledger',`month_key=eq.${encodeURIComponent(mo)}${br?`&branch=eq.${br}`:''}&order=date.asc&select=*&limit=5000`)
     ]);
+    const trav=Array.isArray(travData)?travData:[];
+    const travBy={}; trav.forEach(r=>{(travBy[r.staff_id]=travBy[r.staff_id]||[]).push(r);});
+    // same rule as the Salary Sheet: + company pays staff back, − staff holding cash
+    const travAdj=id=>-(tlBalance(travBy[id]||[]).bal);
     const staff=Array.isArray(staffData)?staffData:[];
     const att=Array.isArray(attData)?attData:[];
     const clocks=Array.isArray(clockData)?clockData:[];
@@ -2336,6 +2341,7 @@ async function exportMonthlyRich(mo,br){
     const regular=staff.filter(s=>s.type==='regular').map(s=>({
       id:s.id,name:s.name,role:s.role,branch:s.branch,salary:s.salary||0,
       workdays:wd, worked:clocks.filter(c=>c.staff_id===s.id).length,
+      travel:travAdj(s.id),
       status:paidMap[s.id]?'PAID':'UNPAID'
     }));
     const event=staff.filter(s=>s.type==='event').map(s=>{
@@ -2348,7 +2354,7 @@ async function exportMonthlyRich(mo,br){
       const eff = rows.length ? Math.round((total/rows.length)*100)/100 : base;
       return {
         id:s.id,name:s.name,role:s.role,branch:s.branch,
-        rate:eff, events:rows.length,
+        rate:eff, events:rows.length, travel:travAdj(s.id),
         status:paidMap[s.id]?'PAID':'UNPAID'
       };
     });
@@ -2358,7 +2364,9 @@ async function exportMonthlyRich(mo,br){
       monthLabel:mo, branch:br||'',
       generated:'Generated: '+new Date().toLocaleString('en-GB',{day:'numeric',month:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})+'  ·  Figures update automatically from Regular Staff, Event Staff and Outsourced sheets',
       assumptions:{workdays:wd, sundays:getSundays(yi,mi), paidoffs:4},
-      regular, event, outsourced, attendance
+      regular, event, outsourced, attendance,
+      travel: trav.map(r=>{const st=sById[r.staff_id]; return {date:r.date,sid:r.staff_id,name:(st&&st.name)||r.staff_name||r.staff_id,branch:r.branch||'',
+        kind:r.kind,category:r.kind==='advance'?'Advance':(r.category||'Bill'),amount:Number(r.amount)||0,note:r.note||'',status:r.status||'',bill:r.bill_path||''};})
     };
     const wb=RebelzReport.buildWorkbook(ExcelJS,input);
     const buf=await wb.xlsx.writeBuffer();
@@ -2394,39 +2402,45 @@ async function exportMonthlyRich(mo,br){
     const evt =wb.addWorksheet('Event Staff',{properties:{tabColor:{argb:GREEN}},views:[{state:'frozen',ySplit:1}]});
     const out =wb.addWorksheet('Outsourced',{properties:{tabColor:{argb:RED}}});
     const att =wb.addWorksheet('Attendance Detail',{properties:{tabColor:{argb:PURPLE}},views:[{state:'frozen',ySplit:2}]});
+    const trv =wb.addWorksheet('Travel & Advances',{properties:{tabColor:{argb:'FFB8860B'}},views:[{state:'frozen',ySplit:1}]});
 
     { // REGULAR STAFF
-      reg.addRow(['Staff ID','Name','Role','Branch','Salary','Work Days','Worked','Extra Absent','Deduction','Final Pay','Payment Status','Per Day (₹)']);
-      styleRow(reg,1,1,12,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
+      reg.addRow(['Staff ID','Name','Role','Branch','Salary','Work Days','Worked','Extra Absent','Deduction','Travel (±)','Final Pay','Payment Status','Per Day (₹)']);
+      styleRow(reg,1,1,13,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
       d.regular.forEach((s,i)=>{
         const r=i+2, row=reg.getRow(r);
         row.getCell(1).value=s.id; row.getCell(2).value=s.name; row.getCell(3).value=s.role; row.getCell(4).value=s.branch;
         row.getCell(5).value=s.salary||0; row.getCell(6).value=s.workdays||A.workdays; row.getCell(7).value=s.worked||0;
         row.getCell(8).value={formula:`MAX(0,F${r}-G${r}-Dashboard!$B$18)`};
         row.getCell(9).value={formula:`ROUND(H${r}*E${r}/F${r},0)`};
-        row.getCell(10).value={formula:`ROUND(MIN(F${r},G${r}+Dashboard!$B$18)*E${r}/F${r},0)`};
-        row.getCell(11).value=(s.status||'UNPAID');
-        row.getCell(12).value={formula:`ROUND(E${r}/F${r},0)`};
-        [5,9,10,12].forEach(c=>row.getCell(c).numFmt=RUP);
-        [5,6,7].forEach(c=>{row.getCell(c).fill=fill(INPUT);row.getCell(c).font=F({color:{argb:BLUEFONT}});});
-        row.getCell(11).alignment={horizontal:'center'};
+        row.getCell(10).value=s.travel||0;
+        row.getCell(11).value={formula:`ROUND(MIN(F${r},G${r}+Dashboard!$B$18)*E${r}/F${r},0)+J${r}`};
+        row.getCell(12).value=(s.status||'UNPAID');
+        row.getCell(13).value={formula:`ROUND(E${r}/F${r},0)`};
+        [5,9,10,11,13].forEach(c=>row.getCell(c).numFmt=RUP);
+        row.getCell(10).numFmt='"+₹"#,##0;[Red]"−₹"#,##0;"—"';
+        [5,6,7,10].forEach(c=>{row.getCell(c).fill=fill(INPUT);row.getCell(c).font=F({color:{argb:BLUEFONT}});});
+        row.getCell(12).alignment={horizontal:'center'};
       });
-      [7.5,10.5,13.7,10.4,7.4,10,7.6,11.6,9.6,8.4,14.1,10.1].forEach((w,i)=>reg.getColumn(i+1).width=w);
+      [7.5,10.5,13.7,10.4,7.4,10,7.6,11.6,9.6,10.5,9.6,14.1,10.1].forEach((w,i)=>reg.getColumn(i+1).width=w);
     }
     { // EVENT STAFF
-      evt.addRow(['Staff ID','Name','Role','Branch','Rate','Events Attended','Total Pay','Payment Status']);
-      styleRow(evt,1,1,8,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
+      evt.addRow(['Staff ID','Name','Role','Branch','Rate','Events Attended','Shift Pay','Travel (±)','Total Pay','Payment Status']);
+      styleRow(evt,1,1,10,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
       d.event.forEach((s,i)=>{
         const r=i+2, row=evt.getRow(r);
         row.getCell(1).value=s.id; row.getCell(2).value=s.name; row.getCell(3).value=s.role; row.getCell(4).value=s.branch;
         row.getCell(5).value=s.rate||0; row.getCell(6).value=s.events||0;
         row.getCell(7).value={formula:`E${r}*F${r}`};
-        row.getCell(8).value=(s.status||'UNPAID');
-        row.getCell(5).numFmt=RUP; row.getCell(7).numFmt=RUP;
-        [5,6].forEach(c=>{row.getCell(c).fill=fill(INPUT);row.getCell(c).font=F({color:{argb:BLUEFONT}});});
-        row.getCell(8).alignment={horizontal:'center'};
+        row.getCell(8).value=s.travel||0;
+        row.getCell(9).value={formula:`G${r}+H${r}`};
+        row.getCell(10).value=(s.status||'UNPAID');
+        row.getCell(5).numFmt=RUP; row.getCell(7).numFmt=RUP; row.getCell(9).numFmt=RUP;
+        row.getCell(8).numFmt='"+₹"#,##0;[Red]"−₹"#,##0;"—"';
+        [5,6,8].forEach(c=>{row.getCell(c).fill=fill(INPUT);row.getCell(c).font=F({color:{argb:BLUEFONT}});});
+        row.getCell(10).alignment={horizontal:'center'};
       });
-      [7.4,11.7,11.8,10.4,6.4,14.9,8.7,14.1].forEach((w,i)=>evt.getColumn(i+1).width=w);
+      [7.4,11.7,11.8,10.4,6.4,14.9,9.6,10.5,9.6,14.1].forEach((w,i)=>evt.getColumn(i+1).width=w);
     }
     { // OUTSOURCED (grouped, per-person TOTAL rows)
       out.addRow(['ID','Name','Role','Branch','Date','Amount','Paid']);
@@ -2490,6 +2504,43 @@ async function exportMonthlyRich(mo,br){
       const w={1:7.4,2:10.7,3:5.7,4:11.8,5:10.4,6:8.9,7:9.4,10:12,11:9.6,13:20.8,14:11.7,15:16,16:20,17:31.6,18:15,19:16,20:28.3,21:15.8,22:10.8,23:16.7};
       Object.entries(w).forEach(([c,val])=>att.getColumn(+c).width=val);
     }
+    { // TRAVEL & ADVANCES — every entry for the month + per-staff settlement
+      const T=d.travel||[];
+      trv.addRow(['Date','Staff ID','Name','Branch','Type','Category','Amount','Note','Status','Bill']);
+      styleRow(trv,1,1,10,{fill:fill(NAVY),font:F({bold:true,color:{argb:WHITE}}),alignment:{horizontal:'center'}});
+      T.forEach((t,i)=>{
+        const row=trv.getRow(i+2);
+        row.getCell(1).value=t.date?new Date(t.date):''; row.getCell(1).numFmt='yyyy/mm/dd';
+        row.getCell(2).value=t.sid; row.getCell(3).value=t.name; row.getCell(4).value=t.branch;
+        row.getCell(5).value=t.kind==='advance'?'ADVANCE':'BILL'; row.getCell(6).value=t.category;
+        row.getCell(7).value=t.amount; row.getCell(7).numFmt=RUP;
+        row.getCell(8).value=t.note; row.getCell(9).value=(t.status||'').toUpperCase(); row.getCell(9).alignment={horizontal:'center'};
+        if(t.bill){ row.getCell(10).value={text:'View bill',hyperlink:t.bill}; row.getCell(10).font=F({color:{argb:BLUE2},underline:true}); }
+        if(t.status==='rejected') for(let c=1;c<=9;c++) row.getCell(c).font=F({color:{argb:GREY},strike:true});
+      });
+      if(!T.length) trv.getCell(2,1).value='No travel or advance entries this month.';
+      // per-staff summary
+      const sr=Math.max(T.length,1)+4;
+      trv.mergeCells(sr,1,sr,8); const sh=trv.getCell(sr,1); sh.value='SETTLEMENT BY STAFF (goes into this month\'s salary)'; sh.fill=fill(NAVY); sh.font=F({bold:true,color:{argb:WHITE}});
+      ['Staff ID','Name','Advance Given','Bills Approved','Bills Pending','Balance','Effect on Salary'].forEach((h,i)=>{const c=trv.getCell(sr+1,1+i);c.value=h;c.fill=fill(HDRBLUE);c.font=F({bold:true});c.alignment={horizontal:'center'};});
+      const by={}; T.forEach(t=>{const o=by[t.sid]=by[t.sid]||{name:t.name,adv:0,exp:0,pend:0};
+        if(t.kind==='advance'&&t.status==='approved')o.adv+=t.amount; else if(t.kind!=='advance'&&t.status==='approved')o.exp+=t.amount; else if(t.kind!=='advance'&&t.status==='pending')o.pend+=t.amount;});
+      let r=sr+2, net=0;
+      Object.keys(by).sort((a,b)=>by[a].name.localeCompare(by[b].name)).forEach(id=>{
+        const o=by[id], bal=o.adv-o.exp; net+=-bal;
+        const row=trv.getRow(r);
+        row.getCell(1).value=id; row.getCell(2).value=o.name;
+        row.getCell(3).value=o.adv; row.getCell(4).value=o.exp; row.getCell(5).value=o.pend; row.getCell(6).value=-bal;
+        row.getCell(7).value=bal>0?'Holding — deducted from salary':(bal<0?'Spent own money — added to salary':'Settled');
+        [3,4,5].forEach(c=>row.getCell(c).numFmt=RUP);
+        row.getCell(6).numFmt='"+₹"#,##0;[Red]"−₹"#,##0;"—"';
+        r++;
+      });
+      const tr=trv.getRow(r); tr.getCell(2).value='NET TRAVEL SETTLEMENT'; tr.getCell(6).value=net; tr.getCell(6).numFmt='"+₹"#,##0;[Red]"−₹"#,##0;"—"';
+      styleRow(trv,r,1,7,{fill:fill(HDRBLUE),font:F({bold:true,color:{argb:NAVY}})});
+      if(T.some(t=>t.status==='pending')){ trv.getCell(r+1,1).value='⚠ Pending bills are NOT counted until approved in the app.'; trv.getCell(r+1,1).font=F({color:{argb:RED},italic:true}); }
+      [11,10,20,11,10,13,11,30,11,10].forEach((w,i)=>trv.getColumn(i+1).width=w);
+    }
     buildDashboard(dash, d, A, branchLbl);
     return wb;
 
@@ -2521,8 +2572,8 @@ async function exportMonthlyRich(mo,br){
       ['Category','Amount (₹)','% of Total','Headcount / Entries','Paid (₹)','Unpaid (₹)'].forEach((h,i)=>{const c=dash.getCell(9,1+i);c.value=h;c.fill=fill(HDRBLUE);c.font=F({bold:true});c.alignment={horizontal:'center'};});
       dash.getRow(9).height=16.2;
       const catRows=[
-        ['Regular Staff',"SUM('Regular Staff'!J2:J100)","COUNTA('Regular Staff'!A2:A100)","SUMIF('Regular Staff'!K2:K100,\"PAID\",'Regular Staff'!J2:J100)"],
-        ['Event Staff',"SUM('Event Staff'!G2:G100)","COUNTA('Event Staff'!A2:A100)","SUMIF('Event Staff'!H2:H100,\"PAID\",'Event Staff'!G2:G100)"],
+        ['Regular Staff (incl. travel)',"SUM('Regular Staff'!K2:K100)","COUNTA('Regular Staff'!A2:A100)","SUMIF('Regular Staff'!L2:L100,\"PAID\",'Regular Staff'!K2:K100)"],
+        ['Event Staff (incl. travel)',"SUM('Event Staff'!I2:I100)","COUNTA('Event Staff'!A2:A100)","SUMIF('Event Staff'!J2:J100,\"PAID\",'Event Staff'!I2:I100)"],
         ['Outsourced (per-shift)','SUMIF(Outsourced!$A$2:$A$500,"EXT-*",Outsourced!$F$2:$F$500)','COUNTIF(Outsourced!$A$2:$A$500,"EXT-*")','SUMIFS(Outsourced!$F$2:$F$500,Outsourced!$G$2:$G$500,"PAID",Outsourced!$A$2:$A$500,"EXT-*")']
       ];
       catRows.forEach((cr,i)=>{
@@ -3056,16 +3107,21 @@ function tlPickBill(input){
   rd.readAsDataURL(file);
 }
 // ── STAFF SIDE: My Travel ──
-async function pgMyTravel(el){
+function reloadMyTravel(){ const v=document.getElementById('mtl-mo')?.value; pgMyTravel(document.getElementById('mc'), v); }
+async function pgMyTravel(el, ym){
   loading(el);
   window._tlBill = null;
-  const mk = mkkey(today());
+  const selMonth = ym || today().substring(0,7);
+  const mk = fmtMonth(selMonth);
   const rows = await sbGet('travel_ledger',`staff_id=eq.${CU.id}&order=date.desc&limit=300`);
   const all = Array.isArray(rows)?rows:[];
   const mine = all.filter(r=>r.month_key===mk);
   const b = tlBalance(mine);
   el.innerHTML = `<div style="max-width:560px">
-  <div class="ptitle">My Travel</div><div class="psub">${mk} · advances received and bills submitted</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.75rem">
+    <div><div class="ptitle">My Travel</div><div class="psub">${mk} · advances received and bills submitted</div></div>
+    ${moBar('mtl-mo',selMonth,'reloadMyTravel')}
+  </div>
   <div class="sal-hero">
     <div class="sal-total" style="color:${b.bal>0?'var(--red)':(b.bal<0?'var(--green)':'var(--gold)')}">₹${Math.abs(b.bal).toLocaleString()}</div>
     <div class="sal-lbl">${b.bal>0?'You are holding company money':(b.bal<0?'Company will pay you this':'All settled')}</div>
@@ -3124,20 +3180,27 @@ async function addMyBill(){
     kind:'expense', category:cat, amount:amt, note, bill_path:billUrl,
     date, month_key:mk, status:'pending', entered_by:CU.id
   });
-  if(Array.isArray(res)&&res.length>0){ toast('Bill submitted — waiting for approval ✓'); pgMyTravel(document.getElementById('mc')); }
+  if(Array.isArray(res)&&res.length>0){ toast('Bill submitted — waiting for approval ✓'); reloadMyTravel(); }
   else toast('Failed to submit. Try again.','er');
 }
 // ── ADMIN / MANAGER SIDE: Travel & Advances ──
-async function pgTravel(el){
+function reloadTravel(){ const v=document.getElementById('tl-mo')?.value; pgTravel(document.getElementById('mc'), v||window.__tlMonth); }
+async function pgTravel(el, ym){
   loading(el);
   const br = myBranch();
-  const mk = mkkey(today());
+  const selMonth = ym || window.__navMonth || today().substring(0,7); window.__navMonth=null;
+  window.__tlMonth = selMonth;
+  const mk = fmtMonth(selMonth);
+  const isCur = selMonth===today().substring(0,7);
   let stQ='active=eq.true&select=id,name,branch,type,role&order=name.asc';
   if(br) stQ += `&branch=eq.${br}`;
   const [stData, tlData] = await Promise.all([
     sbGet('staff',stQ),
-    sbGet('travel_ledger',`month_key=eq.${encodeURIComponent(mk)}${br?`&branch=eq.${br}`:''}&order=date.desc&limit=2000`)
-  ]);
+    sbGet('travel_ledger',`month_key=eq.${encodeURIComponent(mk)}${br?`&branch=eq.${br}`:''}&order=date.desc&limit=2000`),
+    sbGet('travel_ledger',`kind=eq.expense&status=eq.pending${br?`&branch=eq.${br}`:''}&select=month_key&limit=2000`)
+  ]).then(r=>{ window.__tlPendAll = Array.isArray(r[2])?r[2]:[]; return r; });
+  const pendOther = {}; (window.__tlPendAll||[]).forEach(r=>{ if(r.month_key!==mk) pendOther[r.month_key]=(pendOther[r.month_key]||0)+1; });
+  const pendOtherTxt = Object.keys(pendOther).map(k=>`${k}: ${pendOther[k]}`).join(' · ');
   const staff = Array.isArray(stData)?stData:[];
   const rows = Array.isArray(tlData)?tlData:[];
   window._TLSTAFF = {}; staff.forEach(s=>{window._TLSTAFF[s.id]=s;});
@@ -3149,8 +3212,13 @@ async function pgTravel(el){
                         .sort((a,b)=>b.b.bal-a.b.bal);
   const totalHolding = balRows.reduce((t,r)=>t+(r.b.bal>0?r.b.bal:0),0);
   const totalOwed    = balRows.reduce((t,r)=>t+(r.b.bal<0?-r.b.bal:0),0);
-  el.innerHTML = `<div class="ptitle">Travel & Advances</div>
-  <div class="psub">${mk} · cash given, bills submitted, balance settled into salary.</div>
+  el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.75rem">
+    <div><div class="ptitle">Travel & Advances</div>
+    <div class="psub">${mk} · cash given, bills submitted, balance settled into ${mk} salary.</div></div>
+    ${moBar('tl-mo',selMonth,'reloadTravel')}
+  </div>
+  ${!isCur?`<div class="info-box">📅 You are viewing <b>${mk}</b>. New advances are filed under the month of the date you pick.</div>`:''}
+  ${pendOtherTxt?`<div class="info-box" style="border-color:var(--amber)">⚠ Bills still pending in other months — ${pendOtherTxt}. Use ◀ ▶ to open that month and approve them.</div>`:''}
   <div class="sal-hero">
     <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
       <div><div class="sal-total" style="font-size:26px;color:var(--red)">₹${totalHolding.toLocaleString()}</div><div class="sal-lbl">Cash held by staff</div></div>
@@ -3223,11 +3291,11 @@ async function giveAdvance(){
     kind:'advance', category:'Advance', amount:amt, note, bill_path:'',
     date, month_key:mk, status:'approved', entered_by:CU.id
   });
-  if(Array.isArray(res)&&res.length>0){ toast('Advance of ₹'+amt.toLocaleString()+' recorded for '+(st.name||sid)+' ✓'); pgTravel(document.getElementById('mc')); }
+  if(Array.isArray(res)&&res.length>0){ toast('Advance of ₹'+amt.toLocaleString()+' recorded for '+(st.name||sid)+' ✓'); reloadTravel(); }
   else toast('Failed to save. Check the travel_ledger table.','er',6000);
 }
-async function tlApprove(id){ await sbPatch('travel_ledger',`id=eq.${id}`,{status:'approved'}); toast('Bill approved ✓'); pgTravel(document.getElementById('mc')); }
-async function tlReject(id){ if(!confirm('Reject this bill?'))return; await sbPatch('travel_ledger',`id=eq.${id}`,{status:'rejected'}); toast('Rejected','er'); pgTravel(document.getElementById('mc')); }
+async function tlApprove(id){ await sbPatch('travel_ledger',`id=eq.${id}`,{status:'approved'}); toast('Bill approved ✓'); reloadTravel(); }
+async function tlReject(id){ if(!confirm('Reject this bill?'))return; await sbPatch('travel_ledger',`id=eq.${id}`,{status:'rejected'}); toast('Rejected','er'); reloadTravel(); }
 async function tlEditAmt(id,cur){
   const t=prompt('Correct the bill amount (₹):', cur);
   if(t===null)return;
@@ -3235,9 +3303,9 @@ async function tlEditAmt(id,cur){
   if(v<=0){toast('Invalid amount','er');return}
   await sbPatch('travel_ledger',`id=eq.${id}`,{amount:v});
   toast('Amount updated to ₹'+v.toLocaleString());
-  pgTravel(document.getElementById('mc'));
+  reloadTravel();
 }
-async function tlDelete(id){ if(!confirm('Delete this entry permanently?'))return; await sbDelete('travel_ledger',`id=eq.${id}`); toast('Deleted'); pgTravel(document.getElementById('mc')); }
+async function tlDelete(id){ if(!confirm('Delete this entry permanently?'))return; await sbDelete('travel_ledger',`id=eq.${id}`); toast('Deleted'); reloadTravel(); }
 // ═══════════════════════════════════════════════════
 // PAY HISTORY (Staff — event & regular, month by month)
 // ═══════════════════════════════════════════════════
