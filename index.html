@@ -1866,10 +1866,10 @@ async function loadSalary(){
     <td style="font-weight:700;color:var(--gold)">₹${pay.toLocaleString()}</td>
     <td><button class="btn bsm ${pd?'btn-s':'btn-d'}" onclick="toggleSalaryPaid('${s.id}','${mk}','${s.branch}',${pd})">${pd?'✓ Paid':'Mark Paid'}</button> <button class="btn bsm" title="Download salary slip" onclick="genRowSlip('${s.id}')">🧾</button></td>
   </tr>`;}).join('')||'<tr><td colspan="10" class="empty">No regular staff.</td></tr>'}</tbody></table></div></div>
-  <div class="ssep">Event Staff</div>
+  <div class="ssep">Event Staff <span style="font-size:10px;letter-spacing:0;text-transform:none;color:var(--muted)">· tap a name to see / remove events</span></div>
   <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Branch</th><th>Role</th><th>○ In Rate</th><th>✈ Out Rate</th><th>Instation</th><th>Outstation</th><th>Events</th><th>✈ Travel</th><th>Total Pay</th><th>Payment</th></tr></thead>
   <tbody>${evtRows.map(({s,rate,rateOut,cnt,cIn,cOut,adj,pay})=>{const pd=paidMap[s.id]===true;return `<tr>
-    <td><div style="display:flex;align-items:center;gap:8px"><div class="av av-e">${ini(s.name)}</div>${s.name}</div></td>
+    <td><div class="ev-name" title="Tap to see event dates" onclick="viewStaffEvents('${s.id}')"><div class="av av-e">${ini(s.name)}</div><span>${s.name}</span><span class="ev-name-hint">📅 view</span></div></td>
     <td>${s.branch}</td><td>${s.role}</td><td>₹${rate.toLocaleString()}</td>
     <td style="color:${rateOut!=null?'var(--amber)':'var(--muted)'}">${rateOut!=null?'₹'+rateOut.toLocaleString():'not set'}</td>
     <td>${cIn||'—'}</td>
@@ -2142,6 +2142,82 @@ async function genHistSlip(mk){
   }catch(e){ console.error(e); toast('Failed: '+(e&&e.message||e),'er',7000); }
 }
 
+
+// ═══════════════════════════════════════════════════
+// SALARY SHEET → per-staff EVENT LIST (view / remove / restore)
+// Remove = status 'rejected' (reversible; frozen amount is kept for Restore)
+// ═══════════════════════════════════════════════════
+function ensureEvCSS(){
+  if(document.getElementById('ev-css')) return;
+  const st=document.createElement('style'); st.id='ev-css';
+  st.textContent=`.ev-name{display:flex;align-items:center;gap:8px;cursor:pointer}
+.ev-name span:first-of-type{border-bottom:1px dashed var(--gold-dim,rgba(227,184,95,.4))}
+.ev-name:hover span:first-of-type{color:var(--gold)}
+.ev-name-hint{font-size:10px;color:var(--muted);opacity:.7}
+.ev-sum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.ev-sum div{flex:1;min-width:90px;background:var(--dk3);border:1px solid var(--border2);border-radius:10px;padding:8px 10px}
+.ev-sum b{display:block;font-size:17px;color:var(--gold)} .ev-sum small{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.ev-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.ev-row.off{opacity:.5} .ev-row.off .ev-main{text-decoration:line-through}
+.ev-date{width:46px;text-align:center;flex-shrink:0;background:var(--dk3);border-radius:8px;padding:4px 0}
+.ev-date b{display:block;font-size:17px;line-height:1.1} .ev-date small{font-size:9px;color:var(--muted);text-transform:uppercase}
+.ev-main{flex:1;min-width:0} .ev-main .t{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-main .m{font-size:11px;color:var(--muted);margin-top:2px}
+.ev-amt{font-weight:700;color:var(--gold);font-size:13px;white-space:nowrap}`;
+  document.head.appendChild(st);
+}
+async function viewStaffEvents(id){
+  ensureEvCSS();
+  const c = SAL_CACHE||{}; const mk = c.mk; if(!mk){toast('Open the Salary Sheet first','er');return}
+  const row = (c.evtRows||[]).find(r=>r.s.id===id); const s = row ? row.s : {id,name:id};
+  const d = new Date(mk+' 1'); const ym = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  openModal(s.name+' · '+mk,'<div class="loading">Loading</div>');
+  const q = `staff_id=eq.${encodeURIComponent(id)}&status=in.(approved,rejected)&${monthRange(ym)}${c.fb?`&branch=eq.${c.fb}`:''}&select=*&order=date.asc&limit=1000`;
+  const rows = await sbGet('attendance',q);
+  const list = Array.isArray(rows)?rows:[];
+  const evIds = [...new Set(list.map(a=>a.event_id).filter(Boolean))];
+  let evMap = {};
+  if(evIds.length){
+    const ev = await sbGet('events',`id=in.(${evIds.map(encodeURIComponent).join(',')})&select=id,name,date`);
+    if(Array.isArray(ev)) ev.forEach(e=>evMap[e.id]=e);
+  }
+  const amtOf = a => (a.rate_applied!=null && a.rate_applied!=='') ? Number(a.rate_applied)
+      : (a.trip_type==='outstation' ? (row&&row.rateOut!=null?row.rateOut:(row?row.rate:0)) : (row?row.rate:0));
+  const act = list.filter(a=>a.status==='approved');
+  const total = act.reduce((t,a)=>t+amtOf(a),0);
+  const paid = c.paidMap && c.paidMap[id]===true;
+  const body = `
+    ${paid?`<div class="b ba" style="display:block;margin-bottom:10px;padding:8px 10px;white-space:normal">⚠ Already marked <b>Paid</b> for ${mk}. Removing an event will change his total after payment.</div>`:''}
+    <div class="ev-sum">
+      <div><b>${act.length}</b><small>Events</small></div>
+      <div><b>${act.filter(a=>a.trip_type==='outstation').length}</b><small>Outstation</small></div>
+      <div><b>₹${total.toLocaleString()}</b><small>Shift pay</small></div>
+    </div>
+    ${list.length?list.map(a=>{
+      const e = evMap[a.event_id]||{}; const dt = new Date(a.date+'T00:00:00'); const off = a.status==='rejected';
+      return `<div class="ev-row${off?' off':''}">
+        <div class="ev-date"><b>${dt.getDate()}</b><small>${dt.toLocaleString('en-GB',{weekday:'short'})}</small></div>
+        <div class="ev-main"><div class="t">${e.name||a.event_id||'Event'}</div>
+          <div class="m">${dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})} · ${a.trip_type==='outstation'?'✈ Outstation'+(a.city?' · '+a.city:''):'○ Instation'}${a.time?' · '+a.time:''}${off?' · <span style="color:var(--red)">Removed</span>':''}</div></div>
+        <div class="ev-amt">${off?'—':'₹'+amtOf(a).toLocaleString()}</div>
+        ${off?`<button class="btn bsm" onclick="restoreStaffEvent('${a.id}','${id}')">↩ Restore</button>`
+             :`<button class="btn btn-d bsm" onclick="removeStaffEvent('${a.id}','${id}')">✗ Remove</button>`}
+      </div>`;}).join(''):'<div class="empty">No events this month.</div>'}
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Removed events drop out of pay but stay on record — tap ↩ Restore to bring one back.</div>
+    <div class="grow" style="margin-top:12px"><button class="btn bsm" onclick="closeModal()">Close</button></div>`;
+  openModal(s.name+' · '+mk, body);
+}
+async function removeStaffEvent(attId,staffId){
+  if(!confirm('Remove this event from his pay for this month?\n(You can restore it later.)')) return;
+  await sbPatch('attendance',`id=eq.${attId}`,{status:'rejected'});
+  toast('Event removed');
+  await loadSalary(); viewStaffEvents(staffId);
+}
+async function restoreStaffEvent(attId,staffId){
+  await sbPatch('attendance',`id=eq.${attId}`,{status:'approved'});
+  toast('Event restored ✓');
+  await loadSalary(); viewStaffEvents(staffId);
+}
 async function pgReports(el){
   loading(el);
   // ── Build last 12 months list ──
