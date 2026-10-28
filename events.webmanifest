@@ -1,0 +1,32 @@
+{
+  "id": "/events.html",
+  "name": "Rebelz Events",
+  "short_name": "Rebelz Events",
+  "description": "Rebelz event staff \u2014 mark present at events, attendance & pay",
+  "start_url": "/events.html",
+  "scope": "/events",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F0A0C",
+  "theme_color": "#0F0A0C",
+  "icons": [
+    {
+      "src": "/icon-events-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-events-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-events-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
