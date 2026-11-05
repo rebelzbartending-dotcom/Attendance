@@ -385,6 +385,31 @@ async function pgMonthly(el){
 function myBranch(){return CU?.branch==='ALL'?null:CU?.branch}
 function isManager(){return CU?.userType==='admin' && CU?.role==='Branch Manager';}
 function toast(m,t='ok',dur=3000){const el=document.getElementById('toast');el.className='toast show '+t;el.innerHTML=(t==='ok'?'✓ ':t==='info'?'↻ ':'✗ ')+m;setTimeout(()=>el.className='toast',dur)}
+// ── Big confirmation toast (admin add actions) ──
+function ensureCtCSS(){if(document.getElementById('ct-css'))return;const st=document.createElement('style');st.id='ct-css';st.textContent=`
+#ctoast{position:fixed;left:50%;top:18px;transform:translate(-50%,-20px);opacity:0;pointer-events:none;z-index:10000;width:min(92vw,380px);background:var(--dk2);border:1.5px solid var(--green);border-radius:16px;padding:14px 16px;box-shadow:0 14px 44px rgba(0,0,0,.6);display:flex;gap:12px;align-items:flex-start;transition:all .28s ease;cursor:pointer}
+#ctoast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#ctoast.er{border-color:var(--red)}
+#ctoast .ct-ic{flex:0 0 38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;background:var(--green-dim,rgba(70,190,126,.15));color:var(--green)}
+#ctoast.er .ct-ic{background:var(--red-dim,rgba(231,76,60,.15));color:var(--red)}
+#ctoast .ct-t{font-family:var(--ff);font-size:16px;color:var(--gold);margin-bottom:3px;line-height:1.25}
+#ctoast .ct-l{font-size:12.5px;color:var(--text);opacity:.9;line-height:1.5}
+#ctoast .ct-l b{color:var(--gold-l)}
+#ctoast .ct-x{margin-left:auto;color:var(--muted);font-size:16px}`;document.head.appendChild(st)}
+let __ctT=null;
+function confirmToast(title,lines=[],type='ok',dur=4500){
+  ensureCtCSS();let el=document.getElementById('ctoast');
+  if(!el){el=document.createElement('div');el.id='ctoast';el.onclick=()=>el.classList.remove('show');document.body.appendChild(el)}
+  el.className=type==='er'?'er':'';
+  el.innerHTML=`<div class="ct-ic">${type==='er'?'✗':'✓'}</div><div><div class="ct-t">${title}</div>${lines.map(l=>`<div class="ct-l">${l}</div>`).join('')}</div><div class="ct-x">×</div>`;
+  void el.offsetWidth;el.classList.add('show');
+  try{navigator.vibrate&&navigator.vibrate(type==='er'?[60,40,60]:40)}catch(e){}
+  clearTimeout(__ctT);__ctT=setTimeout(()=>el.classList.remove('show'),dur);
+}
+// Lock the clicked button while saving (stops double-taps creating duplicates)
+function btnBusy(on,fn){const b=document.querySelector(`button[onclick="${fn}()"]`);if(!b)return;
+  if(on){b.dataset.lbl=b.innerHTML;b.disabled=true;b.innerHTML='⏳ Saving…';b.style.opacity='.6'}
+  else{b.disabled=false;if(b.dataset.lbl)b.innerHTML=b.dataset.lbl;b.style.opacity=''}}
 function openModal(t,b){document.getElementById('modal-title').textContent=t;document.getElementById('modal-body').innerHTML=b;document.getElementById('modal-bg').classList.remove('hidden')}
 function closeModal(){document.getElementById('modal-bg').classList.add('hidden')}
 function loading(el){el.innerHTML='<div class="loading">Loading</div>'}
@@ -940,6 +965,7 @@ async function addStaff(){
   const pin = document.getElementById('ns-pin').value.trim();
   if(!name){toast('Name required','er');return}
   if(pin.length!==4||isNaN(Number(pin))){toast('PIN must be 4 digits','er');return}
+  btnBusy(true,'addStaff');
   const brCode = br==='Vijayawada'?'VJA':br==='Hyderabad'?'HYD':'VSK';
   const pfx = type==='regular' ? brCode+'-R' : brCode+'-';
   const existing = await sbGet('staff', `id=like.${pfx}*&select=id`);
@@ -948,11 +974,12 @@ async function addStaff(){
   const obj = {id:newId,name,phone,role,type,branch:br,pin,active:true};
   if(type==='regular') obj.salary=rate; else obj.rate=rate;
   const res = await sbPost('staff', obj);
+  btnBusy(false,'addStaff');
   if(Array.isArray(res) && res.length > 0){
-    toast(name+' added as '+newId);
+    confirmToast('Staff added successfully',[`<b>${name}</b> · ID <b>${newId}</b>`,`${type==='regular'?'Regular staff':'Event staff'} · ${br}${role?' · '+role:''}`,`${type==='regular'?'Salary':'Rate'}: ₹${rate.toLocaleString('en-IN')} · PIN set`]);
     ['ns-name','ns-phone','ns-pin','ns-rate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     loadStaffTable(); loadLoginDropdowns();
-  } else toast('Failed to add staff','er');
+  } else confirmToast('Staff NOT added',['Something went wrong. Check internet & try again.'],'er');
 }
 async function editStaff(id){
   const data = await sbGet('staff',`id=eq.${id}&select=*`);
@@ -1256,9 +1283,11 @@ async function addEvent(){
   const city=(document.getElementById('ne-city')?.value||'').trim();
   if(!name||!date){toast('Name and date required','er');return}
   if(trip==='outstation'&&!city){toast('Enter the city for an outstation event','er');return}
+  btnBusy(true,'addEvent');
   const res = await sbPost('events',{id:'EVT-'+uid(),name,date,branch:br,status:'open',trip_type:trip,city:trip==='outstation'?city:null});
-  if(Array.isArray(res)&&res.length>0){toast('Event created: '+name);document.getElementById('ne-n').value='';loadEvtTable();}
-  else toast('Failed to create event','er');
+  btnBusy(false,'addEvent');
+  if(Array.isArray(res)&&res.length>0){confirmToast('Event created successfully',[`<b>${name}</b>`,`📅 ${new Date(date+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} · ${br}`,trip==='outstation'?`✈ Outstation · ${city}`:'Instation · Open for attendance']);document.getElementById('ne-n').value='';loadEvtTable();}
+  else confirmToast('Event NOT created',['Something went wrong. Check internet & try again.'],'er');
 }
 function toggleCityBox(){
   const t=document.getElementById('ne-trip')?.value;
@@ -1279,7 +1308,7 @@ async function toggleTrip(id,cur){
   loadEvtTable();
 }
 async function closeEvt(id){await sbPatch('events',`id=eq.${id}`,{status:'closed'});loadEvtTable();toast('Event closed')}
-async function delEvt(id,name){if(confirm('Delete '+name+'?')){await sbDelete('events',`id=eq.${id}`);loadEvtTable();}}
+async function delEvt(id,name){if(confirm('Delete '+name+'?')){await sbDelete('events',`id=eq.${id}`);loadEvtTable();toast('Event deleted: '+name)}}
 // ═══════════════════════════════════════════════════
 // OUTSOURCED
 // ═══════════════════════════════════════════════════
@@ -1341,13 +1370,17 @@ async function addExt(){
   const phone=document.getElementById('oe-ph').value.trim();
   const paid=document.getElementById('oe-pd').value==='true';
   if(!name||!amount){toast('Name and amount required','er');return}
-  const open = await sbGet('events',`id=eq.${evId}&select=branch,date`);
+  if(!evId){toast('Select an event first','er');return}
+  btnBusy(true,'addExt');
+  const open = await sbGet('events',`id=eq.${evId}&select=name,branch,date`);
   const ev = Array.isArray(open)&&open[0];
   const res = await sbPost('outsourced',{id:'EXT-'+uid(),event_id:evId,name,role,amount,phone,paid,branch:ev?.branch,date:ev?.date});
-  if(Array.isArray(res)&&res.length>0){toast(name+' added');document.getElementById('oe-n').value='';document.getElementById('oe-a').value='';loadExtTable();}
+  btnBusy(false,'addExt');
+  if(Array.isArray(res)&&res.length>0){confirmToast('Outsourced staff added',[`<b>${name}</b>${role?' · '+role:''}`,`Event: <b>${ev?.name||evId}</b>${ev?.date?' · '+ev.date:''}`,`₹${amount.toLocaleString('en-IN')} · ${paid?'✓ Paid':'Not paid yet'}`]);document.getElementById('oe-n').value='';document.getElementById('oe-a').value='';loadExtTable();}
+  else confirmToast('Outsourced staff NOT added',['Something went wrong. Check internet & try again.'],'er');
 }
 async function togPaid(id,current){await sbPatch('outsourced',`id=eq.${id}`,{paid:!current});loadExtTable();toast('Updated')}
-async function delExt2(id){if(confirm('Remove?')){await sbDelete('outsourced',`id=eq.${id}`);loadExtTable();}}
+async function delExt2(id){if(confirm('Remove?')){await sbDelete('outsourced',`id=eq.${id}`);loadExtTable();toast('Outsourced entry removed')}}
 // ═══════════════════════════════════════════════════
 // APPROVALS
 // ═══════════════════════════════════════════════════
