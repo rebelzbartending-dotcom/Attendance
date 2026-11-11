@@ -1036,7 +1036,9 @@ function renderLog(){
 //   returns     -> what goes back to the office + rental glass breakage
 // No costing anywhere — only names, units and counts.
 // =====================================================================
-const SCATS=['Soft drinks','Soda & mixers','Energy drinks','Juices','Syrups','Ice','Fruits & veggies','Disposables','Bar props','Miscellaneous','Rental glassware'];
+const SCATS=['Soft drinks','Soda & mixers','Energy drinks','Juices','Syrups','Ice','Fruits & veggies','Disposables','Bar props','Miscellaneous','Staff Kit (Internal)','Rental glassware'];
+// Staff Kit (uniforms, bar tools): goes back to the office, never shown to the client
+const STAFF='Staff Kit (Internal)';
 // used up at the event — never returned to the office
 const NO_RETURN=['Ice','Fruits & veggies','Miscellaneous'];
 const SUNITS=['bottle','can','packet','bag','pcs','litre','kg','box','tray'];
@@ -1166,7 +1168,7 @@ window.addExtra=function(){
   if(!qty||qty<1){toast('Enter quantity');return;}
   const extras=asList(curEv.extras); extras.push({cat,name,unit,qty,source:extraSrc,at:nowISO()}); curEv.extras=extras;
   gid('ex-name').value=''; gid('ex-qty').value='';
-  addLog(`Added mid-event: ${qty} ${unit} ${name} (${extraSrc==='local'?'bought locally':'sent by store'})`);
+  addLog(`Added mid-event: ${qty} ${unit} ${name} (${extraSrc==='local'?'bought locally':'sent by store'})${cat===STAFF?' · Staff Kit':''}`);
   renderSupplies(); toast(name+' added ✓');
 };
 window.delExtra=function(i){
