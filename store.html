@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Rebelz — Store</title>
+<!-- Rebelz app (PWA) -->
+<link rel="manifest" href="manifest-store.json"/>
+<meta name="theme-color" content="#150f1f"/>
+<link rel="icon" type="image/png" sizes="32x32" href="rbz-icon-favicon-32.png"/>
+<link rel="apple-touch-icon" href="rbz-icon-store-apple-180.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Rebelz Store"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<script src="pwa-install.js" data-app="store"></script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,500;1,9..144,700&family=Unbounded:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#150f1f;--s1:#1e1630;--s2:#271d3d;--s3:#30254a;--s4:#3a2e58;
+  --b1:#3a2e58;--b2:#4a3c6e;--b3:#5c4d84;
+  --t1:#fff4e2;--t2:#d9cdef;--t3:#a796c4;--t4:#7d6e9a;
+  --gold:#ffc447;--gold2:#ffc447;--gold3:#ffe08a;--gold-dim:#ffc44740;
+  --acc:#3de0d2;--red:#ff4f8b;--grn:#c6f432;--amb:#ff7a45;
+  --tang:#ff7a45;--pink:#ff4f8b;--lime:#c6f432;--aqua:#3de0d2;--honey:#ffc447;--lav:#b79cff;
+  --fh:'Fraunces',Georgia,serif;--fb:'Plus Jakarta Sans',system-ui,sans-serif;--fm:'Plus Jakarta Sans',system-ui,sans-serif;--fx:'Unbounded','Arial Black',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:14px;min-height:100vh;overflow-x:hidden}
+.hdr{background:linear-gradient(180deg,#1e1630 0%,#150f1f 100%);border-bottom:1px solid var(--b1);position:sticky;top:0;z-index:100}
+.hdr::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.hdr-inner{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand-wrap{display:flex;align-items:center;gap:12px}
+.brand-logo{width:44px;height:44px;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold);box-shadow:0 0 20px var(--gold-dim)}
+.brand-name{font-family:var(--fh);font-size:20px;font-weight:700;color:var(--t1);line-height:1}
+.brand-name span{color:var(--gold2)}
+.brand-tag{font-size:8px;color:var(--gold);font-family:var(--fm);letter-spacing:.15em;text-transform:uppercase;margin-top:2px}
+.sync-badge{display:flex;align-items:center;gap:6px;background:var(--s2);border:0.5px solid var(--b2);border-radius:20px;padding:5px 10px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--amb)}
+.sync-txt{font-size:9px;color:var(--t3);font-family:var(--fm);letter-spacing:.06em}
+.hbtn{background:none;border:0.5px solid var(--gold-dim);color:var(--gold2);font-family:var(--fm);font-size:10px;letter-spacing:.05em;padding:6px 12px;border-radius:8px;cursor:pointer}
+.page-tag{font-size:9px;color:var(--t4);font-family:var(--fm);letter-spacing:.1em;text-transform:uppercase;text-align:center;padding:6px;border-top:0.5px solid var(--b1)}
+.wrap{padding:16px;max-width:640px;margin:0 auto 150px}
+.sec-lbl{font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.12em;font-family:var(--fm);margin:4px 0 12px;display:flex;align-items:center;gap:10px}
+.sec-lbl::after{content:'';flex:1;height:.5px;background:linear-gradient(90deg,var(--b2),transparent)}
+.card{background:var(--s1);border:0.5px solid var(--b1);border-radius:16px;padding:16px;margin-bottom:14px;position:relative}
+.card-title{font-size:9px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;font-family:var(--fm);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--fm);margin-bottom:6px}
+.inp{width:100%;background:var(--s2);border:0.5px solid var(--b2);border-radius:10px;padding:12px 14px;color:var(--t1);font-size:14px;font-family:var(--fb);outline:none;-webkit-appearance:none}
+.inp:focus{border-color:var(--gold)}
+select.inp{cursor:pointer;padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23706858' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid-add{display:grid;grid-template-columns:1fr 90px;gap:10px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;font-size:13px;font-family:var(--fb);font-weight:600;cursor:pointer;border:none;width:100%;margin-bottom:8px}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f}
+.btn-gold:active{transform:scale(.97)}
+.btn-ghost{background:transparent;border:0.5px solid var(--b2);color:var(--t2)}
+.btn-wa{background:#0f2a18;border:0.5px solid #1f6b3a;color:#7de0a0}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.fchip{padding:7px 14px;border-radius:20px;border:0.5px solid var(--b2);font-size:11px;color:var(--t2);cursor:pointer;font-family:var(--fm);user-select:none}
+.fchip.active{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f;border-color:transparent;font-weight:700}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:0.5px solid var(--b1)}
+.row:first-of-type{border-top:none}
+.rname{font-size:14px;color:var(--t1)}
+.runit{font-size:10px;color:var(--t3);font-family:var(--fm);margin-left:6px}
+.qty{display:flex;align-items:center;gap:6px}
+.qb{width:32px;height:32px;border-radius:9px;border:0.5px solid var(--b2);background:var(--s2);color:var(--gold2);font-size:16px;cursor:pointer}
+.qn{width:52px;text-align:center;background:transparent;border:none;color:var(--t1);font-size:15px;font-weight:600;font-family:var(--fb);outline:none}
+.xb{width:28px;height:28px;border-radius:8px;border:none;background:transparent;color:var(--t3);font-size:14px;cursor:pointer}
+.tag{font-size:9px;font-family:var(--fm);padding:3px 8px;border-radius:10px;letter-spacing:.04em;text-transform:none}
+.tag-c{background:#0f2a2240;color:#7dd8b8;border:0.5px solid #1f6b5a}
+.tag-r{background:#3a204240;color:var(--amb);border:0.5px solid #6b4a10}
+.status{font-size:11px;font-family:var(--fm);padding:10px 12px;border-radius:10px;margin-top:4px;line-height:1.6}
+.st-new{background:var(--s2);color:var(--t3)}
+.st-sent{background:#0f2a1840;color:var(--grn);border:0.5px solid #1f6b3a}
+.st-draft{background:#3a204240;color:var(--amb);border:0.5px solid #6b4a10}
+.empty{text-align:center;padding:26px 10px;color:var(--t3);font-size:12px;font-family:var(--fm);line-height:1.7}
+.bar{position:fixed;left:0;right:0;bottom:0;background:linear-gradient(0deg,#150f1f 70%,transparent);padding:14px 16px 18px;z-index:50}
+.bar .in{max-width:640px;margin:0 auto}
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(12px);background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f;padding:12px 22px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:all .25s;pointer-events:none;z-index:999;max-width:88vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.hidden{display:none!important}
+
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0}
+.qc{padding:7px 12px;border-radius:20px;border:1.5px solid var(--b2);background:var(--s2);font-size:11px;font-weight:800;color:var(--t2);cursor:pointer;user-select:none}
+.qc:active{transform:scale(.95)}
+.qc.on{background:var(--aqua);border-color:var(--aqua);color:#06302c}
+.copy-box{border:1.5px dashed var(--lav);border-radius:16px;padding:12px;margin-bottom:12px;background:#b79cff10}
+.copy-box label{color:var(--lav)!important}
+.srch{margin-bottom:6px}
+.srch .inp{border-color:var(--aqua);background:#3de0d20d}
+.sres{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.sres:empty{display:none}
+.sr{display:flex;flex-direction:column;padding:8px 12px;border-radius:14px;background:var(--s2);border:1.5px solid var(--b2);cursor:pointer;user-select:none;max-width:100%}
+.sr b{font-size:13px;font-weight:700;color:var(--cream,#fff4e2)}
+.sr small{font-size:10px;font-weight:600;color:var(--t2);margin-top:1px}
+.sr:first-child{border-color:var(--aqua);box-shadow:0 0 0 3px #3de0d222}
+.sr.new{border-style:dashed;border-color:var(--honey)}
+.sr.new b{color:var(--honey)}
+.sr-none{font-size:12px;color:var(--t2);padding:4px 2px}
+.or-line{display:flex;align-items:center;gap:10px;margin:12px 0 10px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t2)}
+.or-line:before,.or-line:after{content:'';flex:1;height:1px;background:var(--b1)}
+.cat-load{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px dashed var(--honey);border-radius:16px;padding:12px 14px;margin-bottom:12px;background:#ffc4470d;font-size:12px;font-weight:600}
+.cat-load .btn{width:auto;margin:0;padding:9px 14px;font-size:11px;white-space:nowrap;flex:none}
+/* ================= REBELZ NIGHT THEME (matches client page) ================= */
+body{background:radial-gradient(520px 420px at 112% -6%,#ff4f8b2e,transparent 62%),radial-gradient(480px 420px at -22% 48%,#3de0d21f,transparent 62%),radial-gradient(520px 420px at 118% 104%,#ff7a4524,transparent 62%),var(--bg)!important;background-attachment:fixed!important}
+body::before{display:none!important}
+.hdr{background:#150f1fe8!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.hdr::after{height:2px!important;background:linear-gradient(90deg,var(--tang),var(--pink),var(--lav))!important}
+.brand-name,.hdr-brand{font-family:var(--fh)!important;font-weight:800!important;letter-spacing:0!important}
+.brand-name span,.hdr-brand span{font-style:italic;font-weight:500;color:var(--honey)!important}
+.brand-tag,.hdr-tag{color:var(--pink)!important;font-weight:700}
+.brand-logo,.hdr-logo{border-color:var(--honey)!important;box-shadow:0 0 0 3px #ffc44722!important}
+.page-tag,.page-label{font-family:var(--fx)!important;font-size:9px!important;letter-spacing:.14em!important;color:var(--t3)!important}
+.card{border-radius:22px!important;border:1.5px solid var(--b1)!important;background:var(--s1)!important}
+.card::before{display:none!important}
+.card-title{font-family:var(--fx)!important;font-size:9px!important;font-weight:700!important;letter-spacing:.12em!important;color:var(--honey)!important}
+.sec-lbl{font-family:var(--fh)!important;font-style:italic;font-size:22px!important;font-weight:700!important;text-transform:none!important;letter-spacing:0!important;color:var(--t1)!important}
+.sec-lbl::after{background:linear-gradient(90deg,var(--b2),transparent)!important}
+.field label,label{font-weight:700!important;letter-spacing:.08em!important}
+.inp,.fb-inp{border-radius:14px!important;border:1.5px solid var(--b2)!important;background:var(--s2)!important;color:var(--t1)!important}
+.inp:focus{border-color:var(--aqua)!important;box-shadow:0 0 0 3px #3de0d226}
+.inp::placeholder{color:var(--t4)}
+select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffc447' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 13px center!important}
+.btn{border-radius:16px!important;font-weight:700!important;letter-spacing:.02em}
+.btn-gold{background:var(--honey)!important;color:#2a1a00!important;box-shadow:0 10px 26px #ffc4472e!important}
+.btn-ghost{border:1.5px solid var(--b2)!important;color:var(--t2)!important}
+.btn-wa{background:#25d366!important;color:#06280f!important}
+.btn-red{border:1.5px solid #ff4f8b66!important;color:var(--pink)!important}
+.toast{background:var(--lime)!important;color:#1a2100!important;border-radius:14px!important;font-weight:800!important;box-shadow:0 10px 30px #00000066!important}
+.fchip{border-radius:30px!important;border:1.5px solid var(--b2)!important;font-weight:700!important;font-family:var(--fb)!important}
+.fchip.active{background:var(--pink)!important;color:#fff!important;border-color:var(--pink)!important}
+/* chunky numbers */
+.stat-v,.metric-v,.qty-num,.dc-rem,.qn,.close-inp,.sp-inp,.pin-num{font-family:var(--fx)!important;font-weight:800!important}
+.stat-box,.metric{border-radius:22px!important;border:none!important;color:#1b1328!important}
+.stat-box::before{display:none!important}
+.stats-grid .stat-box:nth-child(1),.metrics .metric:nth-child(1){background:var(--honey)!important}
+.stats-grid .stat-box:nth-child(2),.metrics .metric:nth-child(2){background:var(--aqua)!important}
+.stats-grid .stat-box:nth-child(3),.metrics .metric:nth-child(3){background:var(--lime)!important}
+.stats-grid .stat-box:nth-child(4),.metrics .metric:nth-child(4){background:var(--pink)!important}
+.stat-box .stat-v,.stat-box .stat-l,.metric .metric-v,.metric .metric-l{color:#1b1328!important}
+.stat-box .stat-l,.metric .metric-l{font-weight:800!important;opacity:.75}
+.stats-grid .stat-box:nth-child(4) .stat-v,.stats-grid .stat-box:nth-child(4) .stat-l,.metrics .metric:nth-child(4) .metric-v,.metrics .metric:nth-child(4) .metric-l{color:#fff!important}
+.ev-card,.dc,.tpl-item,.close-item{border-radius:20px!important;border:1.5px solid var(--b1)!important;background:var(--s1)!important}
+.ev-card.live,.dc.ok{border-color:#c6f43255!important}
+.dc.low{border-color:#ff7a4566!important}.dc.empty{border-color:#ff4f8b66!important}
+.qty-btn,.qb{border-radius:12px!important;border:1.5px solid var(--b2)!important;background:var(--s3)!important;color:var(--honey)!important}
+.tap{border-radius:14px!important}
+.modal{border-radius:28px 28px 0 0!important;border-top:2px solid var(--pink)!important;background:var(--s1)!important}
+.photo-slot{border-radius:18px!important;border:2px dashed var(--b2)!important}
+.status-pill.sp-live,.live-pill{border-radius:30px!important}
+::selection{background:var(--pink);color:#fff}
+/* ---- Returns Check ---- */
+.rc-ev{cursor:pointer}
+.rc-ev .rc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rc-ev b{font-family:var(--fh);font-size:17px;color:var(--t1)}
+.rc-ev .rc-sub{font-size:11px;color:var(--t3);margin-top:3px;line-height:1.5}
+.pill{font-size:10px;font-weight:800;padding:4px 10px;border-radius:30px;white-space:nowrap}
+.p-wait{background:#ffc44722;color:var(--honey,#ffc447)}.p-ok{background:#c6f43222;color:var(--grn)}.p-bad{background:#ff4f8b22;color:var(--red)}
+.rc-row{padding:10px 0;border-top:0.5px solid var(--b1)}
+.rc-row:first-of-type{border-top:none}
+.rc-line{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.rc-nums{font-size:11px;color:var(--t3);margin-top:3px;line-height:1.6}
+.rc-nums b{color:var(--t1)}
+.rc-inp{width:64px;height:40px;text-align:center;border-radius:12px;border:1.5px solid var(--b2);background:var(--s3);color:var(--t1);font-size:16px;font-weight:700;font-family:var(--fb);outline:none}
+.rc-inp.bad{border-color:var(--red);color:var(--red)}
+.rc-lbl{font-size:9px;color:var(--t3);text-align:center;margin-bottom:3px;font-weight:700;letter-spacing:.06em}
+.rc-diff{font-size:11px;font-weight:700;color:var(--red);margin-top:4px}
+.rc-used{font-size:11px;color:var(--acc);margin-top:2px;font-weight:600}
+.rc-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:10px;background:var(--honey,#ffc447);color:#150f1f;font-size:10px;font-weight:800}
+
+/* login gate: 'Opening…' while the saved login is checked */
+#login-gate .lg-wait{display:none;font-size:13px;color:var(--t3);margin-top:8px}
+#login-gate.checking .lg-wait{display:block}
+#login-gate.checking input,#login-gate.checking button,#login-gate.checking #lg-err{display:none}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN GATE ===== -->
+<div id="login-gate" class="checking" style="position:fixed;inset:0;z-index:9999;background:#150f1f;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:360px;text-align:center">
+    <img src="rebelz%20bartending%20logo.png" style="width:72px;height:72px;object-fit:contain;margin-bottom:14px"/>
+    <div style="font-family:var(--fh);font-size:24px;font-weight:700;color:var(--gold2)">Store Login</div>
+    <div style="font-size:11px;color:var(--t3);font-family:var(--fm);margin:6px 0 22px;letter-spacing:.04em">Rebelz Bartending — store managers only</div>
+    <div class="lg-wait">Opening… ✦</div>
+    <input id="lg-user" class="inp" placeholder="Username" autocomplete="username" autocapitalize="none" spellcheck="false" style="margin-bottom:12px"/>
+    <input id="lg-pass" class="inp" type="password" placeholder="Password" autocomplete="current-password" style="margin-bottom:8px"/>
+    <div id="lg-err" style="color:var(--red);font-size:12px;font-family:var(--fm);min-height:16px;margin-bottom:10px"></div>
+    <button class="btn btn-gold" onclick="doLogin()">Log In →</button>
+  </div>
+</div>
+
+<div class="hdr">
+  <div class="hdr-inner">
+    <div class="brand-wrap">
+      <img src="rebelz%20bartending%20logo.png" class="brand-logo"/>
+      <div>
+        <div class="brand-name">Rebelz <span>Store</span></div>
+        <div class="brand-tag">✦ Think of Party, Think of Us ✦</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="sync-badge"><div class="sync-dot" id="sync-dot"></div><div class="sync-txt" id="sync-txt">Connecting</div></div>
+      <button class="hbtn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div class="page-tag" id="page-tag">Store Manager</div>
+</div>
+
+<div class="wrap">
+  <!-- City switch (Super Admin only) -->
+  <div class="chips hidden" id="city-chips">
+    <div class="fchip" data-c="Vijayawada" onclick="setCity('Vijayawada')">Vijayawada</div>
+    <div class="fchip" data-c="Hyderabad" onclick="setCity('Hyderabad')">Hyderabad</div>
+    <div class="fchip" data-c="Visakhapatnam" onclick="setCity('Visakhapatnam')">Visakhapatnam</div>
+  </div>
+
+  <div class="chips">
+    <div class="fchip active" data-t="indent" onclick="setTab('indent')">📦 Send Indent</div>
+    <div class="fchip" data-t="returns" onclick="setTab('returns')">🔁 Returns Check<span class="rc-badge hidden" id="rc-count"></span></div>
+    <div class="fchip" data-t="items" onclick="setTab('items')">📋 Item List</div>
+  </div>
+
+  <!-- ================= INDENT TAB ================= -->
+  <div id="tab-indent">
+    <div class="card">
+      <div class="card-title">Select Event</div>
+      <select class="inp" id="ev-sel" onchange="selectEvent(this.value)"></select>
+      <div id="ev-info"></div>
+    </div>
+
+    <div id="indent-body" class="hidden">
+      <div class="copy-box" id="copy-box">
+        <div class="field" style="margin:0"><label>📋 Copy items from a past event</label>
+          <select class="inp" id="copy-sel" onchange="copyFrom(this.value)"></select></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Add Item</div>
+        <div class="srch">
+          <input class="inp" id="a-srch" placeholder="🔍  Quick search — type 2 letters, e.g. lem" autocomplete="off" oninput="doSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();pickFirst();}"/>
+          <div class="sres" id="a-res"></div>
+        </div>
+        <div class="or-line"><span>or pick by category</span></div>
+        <div class="grid2">
+          <div class="field"><label>Category</label><select class="inp" id="a-cat" onchange="fillItemSel()"></select></div>
+          <div class="field"><label>Item</label><select class="inp" id="a-item" onchange="onItemSel()"></select></div>
+        </div>
+        <div class="grid2 hidden" id="a-new">
+          <div class="field"><label>New Item Name</label><input class="inp" id="a-name" placeholder="e.g. Mountain Dew"/></div>
+          <div class="field"><label>Unit</label><select class="inp" id="a-unit"></select></div>
+        </div>
+        <div class="grid-add">
+          <div class="field" style="margin-bottom:0"><label>Quantity</label><input class="inp" id="a-qty" type="number" inputmode="numeric" min="1" placeholder="e.g. 24"/></div>
+          <div style="display:flex;align-items:flex-end"><button class="btn btn-gold" style="margin:0;height:46px" onclick="addLine()">＋ Add</button></div>
+        </div>
+        <div class="qchips" id="q-chips"></div>
+      </div>
+
+      <div id="indent-list"></div>
+    </div>
+  </div>
+
+  <!-- ================= RETURNS CHECK TAB ================= -->
+  <div id="tab-returns" class="hidden">
+    <div id="rc-list"></div>
+    <div id="rc-detail" class="hidden"></div>
+  </div>
+
+  <!-- ================= ITEM LIST TAB ================= -->
+  <div id="tab-items" class="hidden">
+    <div class="card">
+      <div class="card-title">Add to Item List</div>
+      <div class="field"><label>Category</label><select class="inp" id="m-cat"></select></div>
+      <div class="grid2">
+        <div class="field"><label>Item Name</label><input class="inp" id="m-name" placeholder="e.g. Coke"/></div>
+        <div class="field"><label>Unit</label><select class="inp" id="m-unit"></select></div>
+      </div>
+      <button class="btn btn-gold" onclick="addMaster()">＋ Save Item</button>
+    </div>
+    <div id="master-list"></div>
+  </div>
+</div>
+
+<div class="bar hidden" id="send-bar"><div class="in">
+  <button class="btn btn-gold" id="send-btn" onclick="sendIndent()">Send Indent to Bartender →</button>
+  <button class="btn btn-wa hidden" id="wa-btn" onclick="sendWhatsApp()" style="margin-bottom:0">📲 Share Indent on WhatsApp</button>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, update, onValue, remove, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDcrx5tOL1Y2TWiz1VFfCAC_OagARggGNE",
+  authDomain: "rebelz-tracker.firebaseapp.com",
+  databaseURL: "https://rebelz-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rebelz-tracker",
+  storageBucket: "rebelz-tracker.appspot.com",
+  messagingSenderId: "234156658582",
+  appId: "1:234156658582:web:26597fc333698b0778d7b7"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+const EMAIL_DOMAIN='@rebelz-admin.web';
+
+// ---- CONSTANTS ----
+const CATS=['Soft drinks','Soda & mixers','Energy drinks','Juices','Syrups','Ice','Fruits & veggies','Disposables','Bar props','Miscellaneous','Rental glassware'];
+const UNITS=['bottle','can','packet','bag','pcs','bunch','litre','kg','box','tray'];
+const STARTER={
+  'Soft drinks':[['Coke','bottle'],['Sprite','bottle'],['Thums Up','bottle'],['Limca','bottle'],['Fanta','bottle']],
+  'Soda & mixers':[['Soda','bottle'],['Ginger ale','can'],['Tonic water','can']],
+  'Energy drinks':[['Red Bull','can']],
+  'Juices':[['Orange juice','litre'],['Pineapple juice','litre'],['Cranberry juice','litre']],
+  'Syrups':[['Sugar syrup','bottle'],['Grenadine','bottle'],['Blue curacao syrup','bottle']],
+  'Ice':[['Ice cubes','bag']],
+  'Fruits & veggies':[['Lemon','pcs'],['Lime','pcs'],['Orange','pcs'],['Mint leaves','bunch'],['Cucumber','pcs'],['Watermelon','pcs'],['Pineapple','pcs'],['Green chilli','kg'],['Ginger','kg']],
+  'Miscellaneous':[['Garbage bags','packet'],['Toothpicks','packet'],['Aluminium foil','pcs'],['Cling wrap','pcs']],
+  'Disposables':[['Cocktail disposable glass','pcs'],['Mocktail disposable glass','pcs'],['Short disposable glass','pcs'],['Tissue paper','packet'],['Straws','packet'],['Stirrers','packet']],
+  'Bar props':[['Garnish tray','pcs'],['Bar mat','pcs'],['Shaker','pcs'],['Jigger','pcs'],['Ice bucket','pcs']],
+  'Rental glassware':[['Wine glass','pcs'],['Highball glass','pcs'],['Martini glass','pcs'],['Rocks / whisky glass','pcs'],['Shot glass','pcs'],['Champagne flute','pcs']]
+};
+
+// ---- STATE ----
+let PAST=[], CLOSED=[], rcOpen=null, rcEdit=false; let ME=null, CITY=null, EVENTS=[], MASTER={}, curEv=null, LINES=[], dirty=false, listenersOn=false, evUnsub=null, mUnsub=null;
+
+// ---- HELPERS ----
+function gid(id){return document.getElementById(id);}
+function toast(m,d=2600){const t=gid('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),d);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+function fmtDate(d){try{return d?new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'—';}catch(e){return d||'—';}}
+function fmtDT(iso){try{return new Date(iso).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return '';}}
+function nowISO(){return new Date().toISOString();}
+function opts(arr,sel){return arr.map(v=>`<option${v===sel?' selected':''}>${esc(v)}</option>`).join('');}
+function draftKey(id){return 'rbz_indent_'+id;}
+
+// ---- LOGIN ----
+function showGate(show){gid('login-gate').style.display=show?'flex':'none';}
+window.doLogin=function(){
+  const u=(gid('lg-user').value||'').trim().toLowerCase(), p=gid('lg-pass').value||'', err=gid('lg-err');
+  if(!u||!p){err.textContent='Enter username and password.';return;}
+  err.textContent='Checking…';
+  signInWithEmailAndPassword(auth,u+EMAIL_DOMAIN,p).then(()=>{gid('lg-pass').value='';}).catch(()=>{err.textContent='Wrong username or password.';});
+};
+window.doLogout=function(){ if(dirty&&!confirm('You have an unsent indent (kept on this phone). Log out anyway?'))return; signOut(auth); };
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&gid('login-gate').style.display!=='none')window.doLogin();});
+
+
+// Profile is saved on this phone, so a weak network never forces a re-login.
+function rbzProfile(uid){
+  const k='rbz_me_'+uid;
+  const net=new Promise((ok,no)=>{ get(ref(db,'staff/'+uid)).then(s=>{const p=s.val();try{localStorage.setItem(k,JSON.stringify(p||null));}catch(e){} ok(p);}).catch(no); setTimeout(()=>no(new Error('slow')),7000); });
+  return net.catch(err=>{ const raw=localStorage.getItem(k); if(raw===null) throw err; toast('Weak network — using saved login'); return JSON.parse(raw); });
+}
+setTimeout(()=>{const g=gid('login-gate');if(g)g.classList.remove('checking');},9000);
+onAuthStateChanged(auth,user=>{
+  gid('login-gate').classList.remove('checking');
+  if(!(user&&user.providerData&&user.providerData.length)){ME=null;showGate(true);return;}
+  rbzProfile(user.uid).then(p=>{
+    ME=p?p:{role:'super',name:'Admin',legacy:true};
+    if(ME.active===false){signOut(auth);gid('lg-err').textContent='This login has been disabled. Contact Super Admin.';return;}
+    if(ME.role!=='store'&&ME.role!=='super'){signOut(auth);gid('lg-err').textContent='This page is for Store Managers only.';return;}
+    gid('lg-err').textContent='';
+    showGate(false);
+    if(ME.role==='super'){gid('city-chips').classList.remove('hidden');setCity(localStorage.getItem('rbz_store_city')||'Vijayawada');}
+    else setCity(ME.city);
+    startConn();
+  }).catch(()=>{signOut(auth);gid('lg-err').textContent='Could not load your profile — check connection.';});
+});
+
+// ---- CONNECTION BADGE (weak network support) ----
+function startConn(){
+  if(listenersOn)return; listenersOn=true;
+  onValue(ref(db,'.info/connected'),s=>{
+    const on=!!s.val();
+    gid('sync-dot').style.background=on?'var(--grn)':'var(--amb)';
+    gid('sync-txt').textContent=on?'Live':'Offline · saving on phone';
+  });
+}
+
+// ---- CITY ----
+window.setCity=function(c){
+  if(ME.role!=='super'&&c!==ME.city)return;
+  if(dirty&&curEv&&!confirm('Switch city? Your unsent indent stays saved on this phone.'))return;
+  CITY=c; localStorage.setItem('rbz_store_city',c);
+  document.querySelectorAll('#city-chips .fchip').forEach(x=>x.classList.toggle('active',x.dataset.c===c));
+  gid('page-tag').textContent='Store · '+c+(ME.name?' · '+ME.name:'')+(ME.role==='super'?' (Super Admin)':'');
+  curEv=null; LINES=[]; dirty=false; rcOpen=null; rcEdit=false;
+  if(evUnsub)evUnsub(); if(mUnsub)mUnsub();
+  evUnsub=onValue(ref(db,'events'),s=>{
+    const d=s.val()||{};
+    PAST=Object.values(d).filter(e=>(e.city||'')===CITY&&e.indent&&e.indent.items)
+      .sort((a,b)=>(b.event_date||'').localeCompare(a.event_date||''));
+    EVENTS=Object.values(d).filter(e=>(e.city||'')===CITY&&e.status!=='closed')
+      .sort((a,b)=>(a.event_date||'').localeCompare(b.event_date||''));
+    renderEvSel();
+    const cut=new Date(); cut.setDate(cut.getDate()-30); const cutS=cut.toISOString().slice(0,10);
+    CLOSED=Object.values(d).filter(e=>(e.city||'')===CITY&&e.status==='closed'&&e.returns&&
+        (!e.returns_chk||(e.event_date||'')>=cutS||(e.returns_chk.checked_at||'').slice(0,10)>=cutS))
+      .sort((a,b)=>(b.event_date||'').localeCompare(a.event_date||''));
+    renderReturns();
+  });
+  mUnsub=onValue(ref(db,'store_items/'+CITY),s=>{MASTER=s.val()||{};renderMaster();fillItemSel(true);});
+};
+
+// ---- TABS ----
+window.setTab=function(t){
+  document.querySelectorAll('[data-t]').forEach(x=>x.classList.toggle('active',x.dataset.t===t));
+  gid('tab-indent').classList.toggle('hidden',t!=='indent');
+  gid('tab-items').classList.toggle('hidden',t!=='items');
+  gid('tab-returns').classList.toggle('hidden',t!=='returns');
+  if(t==='returns') renderReturns();
+  gid('send-bar').classList.toggle('hidden',t!=='indent'||!curEv);
+};
+
+// ---- EVENT SELECT ----
+function renderEvSel(){
+  const sel=gid('ev-sel'), keep=curEv&&curEv.id;
+  sel.innerHTML='<option value="">— Choose an upcoming event —</option>'+EVENTS.map(e=>
+    `<option value="${esc(e.id)}"${e.id===keep?' selected':''}>${e.indent?'✅ ':'⏳ '}${esc(fmtDate(e.event_date))} · ${esc(e.client_name||'')}${e.event_name?' · '+esc(e.event_name):''}</option>`).join('');
+  if(!EVENTS.length) sel.innerHTML='<option value="">No upcoming events in '+esc(CITY)+'</option>';
+  if(keep){ const ev=EVENTS.find(e=>e.id===keep); if(ev){curEv=ev; renderInfo();} }
+}
+window.selectEvent=function(id){
+  if(dirty&&curEv&&curEv.id!==id) toast('Previous indent kept as draft on this phone');
+  curEv=EVENTS.find(e=>e.id===id)||null;
+  if(!curEv){gid('indent-body').classList.add('hidden');gid('send-bar').classList.add('hidden');gid('ev-info').innerHTML='';return;}
+  // Load: a newer unsent draft on this phone wins over the saved indent
+  const draft=JSON.parse(localStorage.getItem(draftKey(id))||'null');
+  const server=curEv.indent;
+  if(draft&&(!server||draft.at>(server.updated_at||''))){LINES=draft.lines;dirty=true;}
+  else{LINES=server&&server.items?JSON.parse(JSON.stringify(server.items)):[];dirty=false;}
+  gid('indent-body').classList.remove('hidden');
+  gid('send-bar').classList.remove('hidden');
+  renderInfo(); renderLines(); fillItemSel(); renderCopy();
+};
+function renderInfo(){
+  const e=curEv, i=e.indent;
+  let st;
+  if(dirty) st=`<div class="status st-draft">✏️ Changes not sent yet — saved on this phone.</div>`;
+  else if(i) st=`<div class="status st-sent">✅ Indent sent ${esc(fmtDT(i.updated_at))} by ${esc(i.sent_by_name||'—')}${i.pending?' · ⏳ waiting for network':''}<br/>You can still edit and update it until the event closes.</div>`;
+  else st=`<div class="status st-new">⏳ No indent sent yet for this event.</div>`;
+  gid('ev-info').innerHTML=`<div style="font-size:11px;color:var(--t3);font-family:var(--fm);margin:10px 0 2px;line-height:1.7">
+    ${esc(e.client_name||'')} · ${esc(fmtDate(e.event_date))}${e.guests?' · '+esc(e.guests)+' guests':''}<br/>
+    Status: ${esc(e.status||'setup')} · Bartender: ${e.owner_wa?'+91 '+esc(e.owner_wa):'—'}</div>${st}`;
+  gid('send-btn').textContent=i?'Update Indent →':'Send Indent to Bartender →';
+  gid('wa-btn').classList.toggle('hidden',!i||dirty);
+}
+
+// ---- ADD ITEM ----
+function masterFor(cat){return Object.entries(MASTER).filter(([k,v])=>v.cat===cat).sort((a,b)=>a[1].name.localeCompare(b[1].name));}
+window.fillItemSel=function(keep){
+  const cs=gid('a-cat'); if(!cs.options.length) cs.innerHTML=opts(CATS);
+  const cat=cs.value, is=gid('a-item'), prev=keep?is.value:'';
+  const list=masterFor(cat);
+  is.innerHTML=list.map(([k,v])=>`<option value="${esc(k)}">${esc(v.name)} (${esc(v.unit)})</option>`).join('')+'<option value="__new">＋ New item…</option>';
+  if(prev&&[...is.options].some(o=>o.value===prev)) is.value=prev;
+  if(!gid('a-unit').options.length) gid('a-unit').innerHTML=opts(UNITS);
+  window.onItemSel();
+};
+window.onItemSel=function(){gid('a-new').classList.toggle('hidden',gid('a-item').value!=='__new');};
+window.addLine=function(){
+  const cat=gid('a-cat').value, key=gid('a-item').value, qty=parseInt(gid('a-qty').value,10);
+  let name,unit;
+  if(key==='__new'){
+    name=gid('a-name').value.trim(); unit=gid('a-unit').value;
+    if(!name){toast('Type the new item name');return;}
+    const k=slug(cat+'-'+name);
+    if(!MASTER[k]) set(ref(db,'store_items/'+CITY+'/'+k),{cat,name,unit,added_by:ME.name||'',added_at:nowISO()});
+    MASTER[k]={cat,name,unit};
+  } else {
+    const m=MASTER[key]; if(!m){toast('Choose an item');return;}
+    name=m.name; unit=m.unit;
+  }
+  if(!qty||qty<1){toast('Enter quantity');return;}
+  const ex=LINES.find(l=>l.cat===cat&&l.name.toLowerCase()===name.toLowerCase());
+  if(ex){ex.qty+=qty;toast(name+' → now '+ex.qty+' '+ex.unit);}
+  else LINES.push({cat,name,unit,qty});
+  gid('a-qty').value=''; gid('a-name').value='';
+  if(key==='__new'){fillItemSel();}
+  touch();
+};
+
+// ---- INDENT LINES ----
+function touch(){
+  dirty=true;
+  if(curEv) localStorage.setItem(draftKey(curEv.id),JSON.stringify({at:nowISO(),lines:LINES}));
+  renderLines(); renderInfo();
+}
+window.chg=function(i,d){const l=LINES[i];if(!l)return;l.qty=Math.max(0,(l.qty||0)+d);touch();};
+window.setQ=function(i,v){const l=LINES[i];if(!l)return;l.qty=Math.max(0,parseInt(v,10)||0);touch();};
+window.delL=function(i){LINES.splice(i,1);touch();};
+function renderLines(){
+  const box=gid('indent-list');
+  if(!LINES.length){box.innerHTML=`<div class="card"><div class="empty">No items yet.<br/>Pick a category and item above, enter quantity, tap ＋ Add.</div></div>`;return;}
+  let h='', total=0;
+  CATS.forEach(cat=>{
+    const rows=LINES.map((l,i)=>[l,i]).filter(([l])=>l.cat===cat);
+    if(!rows.length)return;
+    const rental=cat==='Rental glassware';
+    h+=`<div class="card"${rental?' style="border-color:#6b4a10"':''}><div class="card-title"><span>${esc(cat)}</span>
+      <span class="tag ${rental?'tag-r':'tag-c'}">${rental?'Client sees: sent + breakage':'Client sees: list'}</span></div>`;
+    rows.forEach(([l,i])=>{ total+=l.qty;
+      h+=`<div class="row"><div><span class="rname">${esc(l.name)}</span><span class="runit">${esc(l.unit)}</span></div>
+        <div class="qty"><button class="qb" onclick="chg(${i},-1)">−</button>
+        <input class="qn" type="number" inputmode="numeric" value="${l.qty}" onchange="setQ(${i},this.value)"/>
+        <button class="qb" onclick="chg(${i},1)">+</button><button class="xb" onclick="delL(${i})" aria-label="Remove">✕</button></div></div>`;
+    });
+    h+='</div>';
+  });
+  box.innerHTML=`<div class="sec-lbl">Indent · ${LINES.length} item${LINES.length!==1?'s':''}</div>`+h;
+}
+
+// ---- SEND ----
+window.sendIndent=function(){
+  if(!curEv)return;
+  const items=LINES.filter(l=>l.qty>0);
+  if(!items.length){toast('Add at least one item');return;}
+  const prev=curEv.indent||{};
+  const data={items,city:CITY,sent_at:prev.sent_at||nowISO(),updated_at:nowISO(),
+    sent_by:auth.currentUser.uid,sent_by_name:ME.name||'',version:(prev.version||0)+1};
+  const evId=curEv.id;
+  // Firebase keeps this write queued on the phone if the network is weak and sends it when back online
+  set(ref(db,'events/'+evId+'/indent'),data)
+    .then(()=>{localStorage.removeItem(draftKey(evId));toast('Indent synced ✓ — bartender can see it');})
+    .catch(e=>toast('Could not save — '+((e&&e.code)||'check connection')));
+  curEv.indent=data; LINES=JSON.parse(JSON.stringify(items)); dirty=false;
+  localStorage.removeItem(draftKey(evId));
+  renderLines(); renderInfo();
+  toast(prev.version?'Indent updated ✓':'Indent sent ✓');
+};
+
+// ---- WHATSAPP (single message to bartender) ----
+window.sendWhatsApp=function(){
+  const e=curEv; if(!e||!e.indent)return;
+  const phone='91'+(e.owner_wa||'').replace(/\D/g,'').slice(-10);
+  let body='';
+  CATS.forEach(cat=>{
+    const rows=e.indent.items.filter(l=>l.cat===cat); if(!rows.length)return;
+    body+=`\n*${cat.toUpperCase()}*\n`+rows.map(l=>`• ${l.name} — ${l.qty} ${l.unit}`).join('\n')+'\n';
+  });
+  const msg=`📦 *REBELZ STORE — INDENT*\n✦ Think of Party, Think of Us ✦\n\n📋 *${e.event_name||e.client_name}*\n${e.client_name} · ${fmtDate(e.event_date)} · ${CITY}\n${body}\n✅ Please count everything when it reaches you and confirm in your panel.\n\n_Sent by ${ME.name||'Store'} · Rebelz Bartending Services_`;
+  window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(msg),'_blank');
+};
+
+// ---- MASTER ITEM LIST ----
+gid('m-cat').innerHTML=opts(CATS); gid('m-unit').innerHTML=opts(UNITS);
+window.addMaster=function(){
+  const cat=gid('m-cat').value, name=gid('m-name').value.trim(), unit=gid('m-unit').value;
+  if(!name){toast('Type the item name');return;}
+  const k=slug(cat+'-'+name);
+  if(MASTER[k]){toast(name+' is already in the list');return;}
+  set(ref(db,'store_items/'+CITY+'/'+k),{cat,name,unit,added_by:ME.name||'',added_at:nowISO()})
+    .catch(e=>toast('Could not save — '+((e&&e.code)||'check connection')));
+  gid('m-name').value=''; toast(name+' saved ✓');
+};
+window.delMaster=function(k){
+  const m=MASTER[k]; if(!m)return;
+  if(!confirm('Remove "'+m.name+'" from the item list? (Past indents are not affected.)'))return;
+  remove(ref(db,'store_items/'+CITY+'/'+k));
+};
+window.loadCatStarter=function(cat){
+  const upd={};
+  (STARTER[cat]||[]).forEach(([name,unit])=>{const k=slug(cat+'-'+name); if(!MASTER[k]) upd[k]={cat,name,unit,added_by:ME.name||'',added_at:nowISO()};});
+  update(ref(db,'store_items/'+CITY),upd).then(()=>toast(cat+' starter items added ✓ — edit anytime'))
+    .catch(e=>toast('Could not save — '+((e&&e.code)||'check connection')));
+};
+window.loadStarter=function(){
+  const upd={};
+  Object.entries(STARTER).forEach(([cat,list])=>list.forEach(([name,unit])=>{
+    const k=slug(cat+'-'+name); if(!MASTER[k]) upd[k]={cat,name,unit,added_by:ME.name||'',added_at:nowISO()};
+  }));
+  update(ref(db,'store_items/'+CITY),upd).then(()=>toast('Starter list loaded ✓ — edit anytime'))
+    .catch(e=>toast('Could not save — '+((e&&e.code)||'check connection')));
+};
+function renderMaster(){
+  const box=gid('master-list'), n=Object.keys(MASTER).length;
+  if(!n){box.innerHTML=`<div class="card"><div class="empty">No items saved for ${esc(CITY)} yet.<br/>Load the starter list (Coke, Sprite, Thums Up, soda, Red Bull, ice, disposables, bar props, rental glasses…) and edit it.</div>
+    <button class="btn btn-gold" onclick="loadStarter()">Load Starter List</button></div>`;return;}
+  let h=`<div class="sec-lbl">${esc(CITY)} Item List · ${n} items</div>`;
+  ['Fruits & veggies','Miscellaneous'].forEach(cat=>{
+    if(masterFor(cat).length||!STARTER[cat]) return;
+    h+=`<div class="cat-load"><span>New category: <b>${esc(cat)}</b><br/><small style="color:var(--t2)">${esc(STARTER[cat].map(x=>x[0]).join(', '))}</small></span><button class="btn btn-gold" onclick="loadCatStarter('${esc(cat)}')">＋ Load</button></div>`;
+  });
+  CATS.forEach(cat=>{
+    const list=masterFor(cat); if(!list.length)return;
+    h+=`<div class="card"><div class="card-title"><span>${esc(cat)}</span><span class="tag tag-c">${list.length}</span></div>`+
+      list.map(([k,v])=>`<div class="row"><div><span class="rname">${esc(v.name)}</span><span class="runit">${esc(v.unit)}</span></div>
+        <button class="xb" onclick="delMaster('${esc(k)}')" aria-label="Remove">✕</button></div>`).join('')+'</div>';
+  });
+  box.innerHTML=h;
+}
+
+// ===================== SMART INPUT (store) =====================
+function drawQ(){
+  const inp=gid('a-qty');
+  gid('q-chips').innerHTML=[6,12,24,36,48,100].map(n=>`<div class="qc${inp.value==n?' on':''}" data-q="${n}">${n}</div>`).join('');
+}
+gid('q-chips').addEventListener('click',e=>{const q=e.target.closest('[data-q]');if(!q)return;gid('a-qty').value=q.dataset.q;drawQ();});
+gid('a-qty').addEventListener('input',drawQ); drawQ();
+const _addLine=window.addLine; window.addLine=function(){_addLine();drawQ();};
+// ---- QUICK SEARCH (across all categories) ----
+let SRES=[];
+window.doSearch=function(){
+  const q=gid('a-srch').value.trim().toLowerCase(), box=gid('a-res');
+  if(!q){box.innerHTML='';SRES=[];return;}
+  const all=Object.entries(MASTER).filter(([k,v])=>v&&v.name&&v.name.toLowerCase().includes(q));
+  all.sort((a,b)=>{const sa=a[1].name.toLowerCase().startsWith(q)?0:1, sb=b[1].name.toLowerCase().startsWith(q)?0:1; return sa-sb||a[1].name.localeCompare(b[1].name);});
+  SRES=all.slice(0,8);
+  const exact=all.some(([k,v])=>v.name.toLowerCase()===q);
+  const raw=gid('a-srch').value.trim(), nice=raw.charAt(0).toUpperCase()+raw.slice(1);
+  let h=SRES.map(([k,v],i)=>`<div class="sr" onclick="pickSearch(${i})"><b>${esc(v.name)}</b><small>${esc(v.cat)} · ${esc(v.unit)}</small></div>`).join('');
+  if(!SRES.length) h+=`<div class="sr-none">Not in the ${esc(CITY)} list yet.</div>`;
+  if(!exact&&q.length>=2) h+=`<div class="sr new" onclick="newFromSearch()"><b>＋ Add “${esc(nice)}” as new item</b><small>saved for next time</small></div>`;
+  box.innerHTML=h;
+};
+window.pickSearch=function(i){
+  const r=SRES[i]; if(!r) return;
+  const [k,v]=r;
+  gid('a-cat').value=v.cat; window.fillItemSel(); gid('a-item').value=k; window.onItemSel();
+  gid('a-srch').value=''; gid('a-res').innerHTML=''; SRES=[];
+  gid('a-qty').focus();
+};
+window.pickFirst=function(){ if(SRES.length) window.pickSearch(0); else if(gid('a-srch').value.trim().length>=2) window.newFromSearch(); };
+window.newFromSearch=function(){
+  const raw=gid('a-srch').value.trim(); if(!raw) return;
+  gid('a-item').value='__new'; window.onItemSel();
+  gid('a-name').value=raw.charAt(0).toUpperCase()+raw.slice(1);
+  gid('a-srch').value=''; gid('a-res').innerHTML=''; SRES=[];
+  toast('Now choose the category and unit, then quantity');
+  gid('a-cat').focus();
+};
+// keep "New item" selected when the category changes after a search
+const _fillSel=window.fillItemSel;
+window.fillItemSel=function(keep){
+  const wasNew=gid('a-item').value==='__new'&&gid('a-name').value.trim();
+  _fillSel(keep);
+  if(wasNew){gid('a-item').value='__new';window.onItemSel();}
+};
+// clear search after adding
+const _addLine2=window.addLine; window.addLine=function(){_addLine2(); gid('a-srch').value=''; gid('a-res').innerHTML=''; SRES=[];};
+
+// Copy a previous indent (same city) into this event
+function renderCopy(){
+  const sel=gid('copy-sel'); if(!sel) return;
+  const list=PAST.filter(e=>!curEv||e.id!==curEv.id).slice(0,25);
+  gid('copy-box').style.display=list.length?'':'none';
+  sel.innerHTML='<option value="">— Pick a past event to copy its items —</option>'+list.map(e=>{
+    const n=asItems(e.indent.items).length;
+    return `<option value="${esc(e.id)}">${esc(fmtDate(e.event_date))} · ${esc(e.client_name||'')}${e.guests?' · '+esc(e.guests)+' guests':''} · ${n} items</option>`;}).join('');
+}
+function asItems(x){return Array.isArray(x)?x:(x?Object.values(x):[]);}
+window.copyFrom=function(id){
+  const src=PAST.find(e=>e.id===id); if(!src||!curEv){return;}
+  const items=asItems(src.indent.items);
+  let mode='replace';
+  if(LINES.length) mode=confirm('This indent already has '+LINES.length+' items.\n\nOK = replace with '+src.client_name+"'s items\nCancel = add them to the current list")?'replace':'merge';
+  if(mode==='replace') LINES=[];
+  items.forEach(l=>{
+    const ex=LINES.find(x=>x.cat===l.cat&&x.name.toLowerCase()===l.name.toLowerCase());
+    if(ex) ex.qty+=l.qty; else LINES.push({cat:l.cat,name:l.name,unit:l.unit,qty:l.qty});
+  });
+  gid('copy-sel').value='';
+  touch();
+  toast('Copied '+items.length+' items from '+(src.client_name||'past event')+' — adjust quantities');
+};
+
+// ===================== RETURNS CHECK (next morning at the office) =====================
+// Bartender's closing "Return to Office" vs what the store actually counts. Internal only.
+function rcList(x){return Array.isArray(x)?x:(x?Object.values(x):[]);}
+function rcKey(cat,name){return (cat+'|'+name).toLowerCase();}
+// where each item came from: store indent (received), store extras, bought locally
+function rcSources(e){
+  const m={};
+  const add=(cat,name,f,q)=>{const k=rcKey(cat,name);m[k]=m[k]||{store:0,local:0,sent:0};m[k][f]+=q;};
+  rcList(e.indent&&e.indent.items).forEach(l=>add(l.cat,l.name,'sent',l.qty||0));
+  if(e.indent_rcv) rcList(e.indent_rcv.items).forEach(l=>add(l.cat,l.name,'store',l.received||0));
+  rcList(e.extras).forEach(x=>add(x.cat,x.name,x.source==='local'?'local':'store',x.qty||0));
+  return m;
+}
+function rcSaved(e){return e.returns_chk||null;}
+function rcMismatchCount(c){
+  if(!c) return 0;
+  return rcList(c.items).filter(i=>i.store!==i.bartender).length+rcList(c.rental).filter(g=>g.store!==g.bartender).length;
+}
+function renderReturns(){
+  const cnt=CLOSED.filter(e=>!rcSaved(e)).length, b=gid('rc-count');
+  if(b){b.textContent=cnt;b.classList.toggle('hidden',!cnt);}
+  const list=gid('rc-list'); if(!list) return;
+  if(rcOpen){ const e=CLOSED.find(x=>x.id===rcOpen); if(e){ if(!rcEdit&&rcSaved(e)) renderRcDetail(e); return; } rcOpen=null; }  // never re-draw over counts being typed
+  gid('rc-detail').classList.add('hidden'); list.classList.remove('hidden');
+  if(!CLOSED.length){list.innerHTML=`<div class="card"><div class="empty">No closed events to check in ${esc(CITY)}.<br/>After an event closes, the bartender's return list shows up here for you to count.</div></div>`;return;}
+  const wait=CLOSED.filter(e=>!rcSaved(e)), done=CLOSED.filter(e=>rcSaved(e));
+  const card=e=>{
+    const c=rcSaved(e), mm=rcMismatchCount(c), r=e.returns||{};
+    const rent=rcList(r.rental), lost=rent.reduce((s,g)=>s+(g.broken||0)+(g.missing||0),0);
+    const pill=!c?'<span class="pill p-wait">⏳ To check</span>':mm?`<span class="pill p-bad">⚠ ${mm} not matching</span>`:'<span class="pill p-ok">✅ Matched</span>';
+    return `<div class="card rc-ev" onclick="openRc('${esc(e.id)}')"><div class="rc-top"><div><b>${esc(e.event_name||e.client_name||'Event')}</b>
+      <div class="rc-sub">${esc(e.client_name||'')} · ${esc(fmtDate(e.event_date))}<br/>${rcList(r.items).length} items${rent.length?` · 🍷 ${rent.length} glass types${lost?` · ${lost} broken/missing`:''}`:''}${c?`<br/>Checked ${esc(fmtDT(c.checked_at))} by ${esc(c.checked_by_name||'—')}`:''}</div></div>${pill}</div></div>`;
+  };
+  list.innerHTML=(wait.length?`<div class="sec-lbl">Waiting for check · ${wait.length}</div>`+wait.map(card).join(''):'')+
+    (done.length?`<div class="sec-lbl">Checked · last 30 days</div>`+done.map(card).join(''):'');
+}
+window.openRc=function(id){rcOpen=id;rcEdit=false;const e=CLOSED.find(x=>x.id===id);if(e)renderRcDetail(e);window.scrollTo(0,0);};
+window.closeRc=function(){rcOpen=null;rcEdit=false;renderReturns();};
+window.editRc=function(){rcEdit=true;const e=CLOSED.find(x=>x.id===rcOpen);if(e)renderRcDetail(e,true);};
+
+function renderRcDetail(e,forceEdit){
+  gid('rc-list').classList.add('hidden');
+  const box=gid('rc-detail'); box.classList.remove('hidden');
+  const r=e.returns||{}, c=rcSaved(e), editing=!c||forceEdit, src=rcSources(e);
+  const items=rcList(r.items), rental=rcList(r.rental);
+  const savedItem=(cat,name)=>c&&rcList(c.items).find(i=>rcKey(i.cat,i.name)===rcKey(cat,name));
+  const savedGlass=name=>c&&rcList(c.rental).find(g=>g.name===name);
+  let h=`<button class="btn btn-ghost" style="margin-bottom:12px" onclick="closeRc()">← All events</button>
+    <div class="card"><div class="card-title">${esc(e.event_name||e.client_name||'Event')}</div>
+    <div class="rc-sub" style="font-size:11px;color:var(--t3);line-height:1.7">${esc(e.client_name||'')} · ${esc(fmtDate(e.event_date))}${e.team&&e.team.leader?' · Lead: '+esc(e.team.leader):''}<br/>
+    Bartender recorded returns ${esc(fmtDT(r.at))}</div>
+    ${c?`<div class="status ${rcMismatchCount(c)?'st-draft':'st-sent'}">${rcMismatchCount(c)?'⚠ '+rcMismatchCount(c)+' not matching':'✅ All matched'} · checked ${esc(fmtDT(c.checked_at))} by ${esc(c.checked_by_name||'—')}${c.pending?' · ⏳ waiting for network':''}</div>`:
+      `<div class="status st-new">Count everything that came back to the office and enter the <b>store count</b>. It's pre-filled with what the bartender said.</div>`}</div>`;
+
+  if(items.length){
+    h+=`<div class="card"><div class="card-title"><span>Rebelz items</span><span class="tag tag-c">internal</span></div>`;
+    items.forEach((it,i)=>{
+      const s=src[rcKey(it.cat,it.name)]||{}, sv=savedItem(it.cat,it.name);
+      const storeVal=sv?sv.store:it.returned;
+      const from=[s.store?`${s.store} from store`:'',s.local?`${s.local} bought locally`:''].filter(Boolean).join(' + ');
+      h+=`<div class="rc-row"><div class="rc-line"><div style="min-width:0"><span class="rname">${esc(it.name)}</span><span class="runit">${esc(it.unit)}</span>
+          <div class="rc-nums">Had at event <b>${it.given}</b>${from?` (${esc(from)})`:''} · Bartender says back <b>${it.returned}</b></div>
+          <div class="rc-used" id="rc-used-${i}"></div><div class="rc-diff" id="rc-diff-${i}"></div></div>
+        <div><div class="rc-lbl">STORE COUNT</div><input class="rc-inp" id="rc-i-${i}" type="number" inputmode="numeric" min="0" value="${storeVal}" ${editing?'':'disabled'} oninput="rcCalc()"/></div></div></div>`;
+    });
+    h+='</div>';
+  }
+  if(rental.length){
+    h+=`<div class="card" style="border-color:#6b4a10"><div class="card-title"><span>🍷 Rental glassware</span><span class="tag tag-r">count every glass</span></div>`;
+    rental.forEach((g,i)=>{
+      const sv=savedGlass(g.name), storeVal=sv?sv.store:g.returned;
+      h+=`<div class="rc-row"><div class="rc-line"><div style="min-width:0"><span class="rname">${esc(g.name)}</span><span class="runit">${esc(g.unit||'pcs')}</span>
+          <div class="rc-nums">Sent <b>${g.sent}</b> · Broken <b>${g.broken||0}</b> · Missing <b>${g.missing||0}</b><br/>Bartender says back <b>${g.returned}</b></div>
+          <div class="rc-diff" id="rc-gdiff-${i}"></div></div>
+        <div><div class="rc-lbl">STORE COUNT</div><input class="rc-inp" id="rc-g-${i}" type="number" inputmode="numeric" min="0" value="${storeVal}" ${editing?'':'disabled'} oninput="rcCalc()"/></div></div></div>`;
+    });
+    h+='</div>';
+  }
+  if(!items.length&&!rental.length) h+=`<div class="card"><div class="empty">The bartender didn't record any returns for this event.</div></div>`;
+  h+=`<div class="field"><label>Note (optional)</label><input class="inp" id="rc-note" placeholder="e.g. 2 straws packets wet, thrown" value="${esc(c&&c.note||'')}" ${editing?'':'disabled'}/></div>`;
+  if(editing) h+=`<button class="btn btn-gold" onclick="saveRc()">✅ Confirm Returns</button>`;
+  else h+=`<button class="btn btn-ghost" onclick="editRc()">✏️ Edit store counts</button>`;
+  if(c&&!editing&&rcMismatchCount(c)) h+=`<button class="btn btn-wa" onclick="rcAlert()">📲 Send mismatch alert on WhatsApp</button>`;
+  box.innerHTML=h;
+  rcCalc();
+}
+window.rcCalc=function(){
+  const e=CLOSED.find(x=>x.id===rcOpen); if(!e) return;
+  const r=e.returns||{};
+  rcList(r.items).forEach((it,i)=>{
+    const inp=gid('rc-i-'+i); if(!inp) return;
+    const v=parseInt(inp.value,10); const n=isNaN(v)?0:v, d=n-it.returned;
+    inp.classList.toggle('bad',d!==0);
+    gid('rc-used-'+i).textContent=`Used at event: ${Math.max(0,it.given-n)} ${it.unit}`;
+    gid('rc-diff-'+i).textContent=d?(d<0?`⚠ ${-d} less than bartender said`:`⚠ ${d} more than bartender said`):'';
+  });
+  rcList(r.rental).forEach((g,i)=>{
+    const inp=gid('rc-g-'+i); if(!inp) return;
+    const v=parseInt(inp.value,10); const n=isNaN(v)?0:v, d=n-g.returned;
+    inp.classList.toggle('bad',d!==0);
+    gid('rc-gdiff-'+i).textContent=d?(d<0?`⚠ ${-d} glass${-d>1?'es':''} short at office`:`⚠ ${d} more than bartender said`):'';
+  });
+};
+window.saveRc=function(){
+  const e=CLOSED.find(x=>x.id===rcOpen); if(!e) return;
+  const r=e.returns||{}, items=[], rental=[];
+  const num=id=>{const v=parseInt((gid(id)||{}).value,10);return isNaN(v)||v<0?null:v;};
+  const ri=rcList(r.items), rg=rcList(r.rental);
+  for(let i=0;i<ri.length;i++){const it=ri[i],n=num('rc-i-'+i); if(n===null){toast('Enter the store count for '+it.name);return;}
+    items.push({cat:it.cat,name:it.name,unit:it.unit,given:it.given,bartender:it.returned,store:n,used:Math.max(0,it.given-n)});}
+  for(let i=0;i<rg.length;i++){const g=rg[i],n=num('rc-g-'+i); if(n===null){toast('Enter the store count for '+g.name);return;}
+    rental.push({name:g.name,unit:g.unit||'pcs',sent:g.sent,broken:g.broken||0,missing:g.missing||0,bartender:g.returned,store:n,short:Math.max(0,g.returned-n)});}
+  const prev=rcSaved(e)||{};
+  const data={items,rental,note:(gid('rc-note').value||'').trim(),checked_at:nowISO(),checked_by:auth.currentUser.uid,
+    checked_by_name:ME.name||'',version:(prev.version||0)+1};
+  data.mismatch=rcMismatchCount(data);
+  // Firebase keeps the write queued on the phone if the network is weak
+  set(ref(db,'events/'+e.id+'/returns_chk'),data)
+    .then(()=>toast('Returns check synced ✓'))
+    .catch(err=>toast('Could not save — '+((err&&err.code)||'check connection'),5000));
+  e.returns_chk=data; rcEdit=false;
+  renderRcDetail(e);
+  toast(data.mismatch?`Saved · ⚠ ${data.mismatch} not matching — send the alert`:'Saved · ✅ all matched');
+};
+window.rcAlert=function(){
+  const e=CLOSED.find(x=>x.id===rcOpen), c=e&&rcSaved(e); if(!c) return;
+  const bad=rcList(c.items).filter(i=>i.store!==i.bartender).map(i=>`• ${i.name}: bartender ${i.bartender} · store counted ${i.store} ${i.unit}`);
+  const badG=rcList(c.rental).filter(g=>g.store!==g.bartender).map(g=>`• ${g.name}: sent ${g.sent} · broken ${g.broken} · missing ${g.missing} · bartender says ${g.bartender} back · store counted ${g.store}`);
+  const msg=`⚠️ *REBELZ STORE — RETURNS MISMATCH*\n\n📋 *${e.event_name||e.client_name}*\n${e.client_name||''} · ${fmtDate(e.event_date)} · ${CITY}${e.team&&e.team.leader?`\nBartender lead: ${e.team.leader}`:''}\n`+
+    (bad.length?`\n*Items*\n${bad.join('\n')}\n`:'')+(badG.length?`\n*🍷 Rental glassware*\n${badG.join('\n')}\n`:'')+
+    (c.note?`\n📝 ${c.note}\n`:'')+`\n_Checked by ${c.checked_by_name||'Store'} · ${fmtDT(c.checked_at)}_`;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+};
+
+function rbzBack(){
+  if(gid('login-gate').style.display!=='none') return false;
+  if(rcOpen){ if(rcEdit&&!confirm('Leave without saving this count?')) return true; window.closeRc(); window.scrollTo(0,0); return true; }
+  const t=document.querySelector('[data-t].active');
+  if(t&&t.dataset.t!=='indent'){ window.setTab('indent'); window.scrollTo(0,0); return true; }
+  return false;
+}
+// ===== PHONE BACK BUTTON — stay inside the app =====
+// Back closes the open popup / goes to the previous step instead of
+// leaving the app. On the main screen: "Press back again to exit".
+(function(){
+  let armed=0;
+  function guard(){ if(!(history.state&&history.state.rbzBack)) history.pushState({rbzBack:1},''); }
+  // add the guard after the user touches the page (Chrome ignores it otherwise)
+  ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,guard,{capture:true,passive:true}));
+  window.addEventListener('popstate',()=>{
+    let handled=false; try{ handled=rbzBack(); }catch(e){ console.error(e); }
+    if(handled){ armed=0; guard(); return; }
+    if(Date.now()-armed<2500) return;            // second press -> leaves next time
+    armed=Date.now(); toast('Press back again to exit');
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Rebelz — Bartender</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,800;1,9..144,500;1,9..144,700&family=Unbounded:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#150f1f;--s1:#1e1630;--s2:#271d3d;--s3:#30254a;--s4:#3a2e58;
+  --b1:#3a2e58;--b2:#4a3c6e;--b3:#5c4d84;
+  --t1:#fff4e2;--t2:#d9cdef;--t3:#a796c4;--t4:#7d6e9a;
+  --gold:#ffc447;--gold2:#ffc447;--gold3:#ffe08a;--gold-dim:#ffc44740;
+  --acc:#3de0d2;--red:#ff4f8b;--grn:#c6f432;--amb:#ff7a45;
+  --tang:#ff7a45;--pink:#ff4f8b;--lime:#c6f432;--aqua:#3de0d2;--honey:#ffc447;--lav:#b79cff;
+  --fh:'Fraunces',Georgia,serif;--fb:'Plus Jakarta Sans',system-ui,sans-serif;--fm:'Plus Jakarta Sans',system-ui,sans-serif;--fx:'Unbounded','Arial Black',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--t1);font-family:var(--fb);font-size:14px}
+.screen{display:none;height:100vh;height:100dvh;flex-direction:column;overflow:hidden}
+.screen.active{display:flex}
+.scroll-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px calc(40px + env(safe-area-inset-bottom))}
+
+/* HEADER */
+.hdr{background:var(--s1);border-bottom:0.5px solid var(--b1);flex-shrink:0;position:relative;overflow:hidden}
+.hdr::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent)}
+.hdr-main{padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:10px;border-bottom:0.5px solid var(--b1)}
+.hdr-logo{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1.5px solid var(--gold);box-shadow:0 0 14px var(--gold-dim)}
+.hdr-brand{font-family:var(--fh);font-size:17px;font-weight:700;color:var(--t1)}
+.hdr-brand span{color:var(--gold2)}
+.hdr-tag{font-size:8px;color:var(--gold);font-family:var(--fm);letter-spacing:.12em;text-transform:uppercase;margin-top:1px}
+.hdr-sub{padding:7px 16px;display:flex;align-items:center;justify-content:space-between}
+.page-label{font-size:9px;color:var(--t4);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
+.live-pill{display:flex;align-items:center;gap:5px;background:#ffc44718;border:0.5px solid var(--gold-dim);border-radius:20px;padding:3px 10px}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--gold2);animation:blink 1.5s infinite}
+.live-txt{font-size:9px;color:var(--gold2);font-family:var(--fm)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* BUTTONS */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:12px;font-size:13px;font-family:var(--fb);font-weight:600;cursor:pointer;border:none;width:100%;transition:all .15s;margin-bottom:8px;letter-spacing:.02em}
+.btn:last-child{margin-bottom:0}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f}.btn-gold:active{transform:scale(.97)}
+.btn-ghost{background:transparent;border:0.5px solid var(--b2);color:var(--t2)}.btn-ghost:active{background:var(--s2)}
+.btn-grn{background:linear-gradient(135deg,#4a6b10,var(--grn));color:#fff}.btn-grn:active{transform:scale(.97)}
+.btn-red{background:transparent;border:0.5px solid #ff4f8b30;color:var(--red)}.btn-red:active{background:#ff4f8b10}
+.btn-wa{background:linear-gradient(135deg,#128c3e,#25d366);color:#fff}.btn-wa:active{transform:scale(.97)}
+.btn-sm{padding:8px 14px;font-size:11px;width:auto;border-radius:8px;margin-bottom:0}
+
+/* INPUTS */
+.field{margin-bottom:11px}
+.field label{display:block;font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--fm);margin-bottom:5px}
+.inp{width:100%;background:var(--s2);border:0.5px solid var(--b2);border-radius:10px;padding:12px 14px;color:var(--t1);font-size:14px;font-family:var(--fb);outline:none;-webkit-appearance:none;transition:border-color .2s}
+.inp:focus{border-color:var(--gold)}.inp::placeholder{color:var(--t4)}
+select.inp{cursor:pointer;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23454038' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+
+/* CARDS */
+.card{background:var(--s1);border:0.5px solid var(--b1);border-radius:14px;padding:14px;margin-bottom:10px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold-dim),transparent)}
+.card-title{font-size:9px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.12em;font-family:var(--fm);margin-bottom:12px}
+
+/* TEMPLATE CHIPS */
+.tpl-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+.tpl-chip{padding:7px 13px;border-radius:20px;border:0.5px solid var(--b2);font-size:11px;color:var(--t2);cursor:pointer;background:transparent;font-family:var(--fb);transition:all .15s}
+.tpl-chip.sel{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f;border-color:transparent;font-weight:600}
+
+/* STOCK ITEMS */
+.tpl-item{background:var(--s2);border:0.5px solid var(--b1);border-radius:10px;padding:11px 13px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.qty-btn{width:36px;height:36px;border-radius:8px;border:0.5px solid var(--b2);background:var(--s3);color:var(--t1);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--fb)}
+.qty-btn:active{background:var(--b2)}
+.qty-num{font-family:var(--fh);font-size:22px;font-weight:700;color:var(--gold2);min-width:28px;text-align:center}
+.remove-x{background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;padding:4px;flex-shrink:0;line-height:1}
+.remove-x:active{color:var(--red)}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+.metric{background:var(--s1);border:0.5px solid var(--b1);border-radius:10px;padding:10px 6px;text-align:center}
+.metric-l{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-family:var(--fm);margin-bottom:4px}
+.metric-v{font-family:var(--fh);font-size:26px;font-weight:700}
+.mv-g{color:var(--grn)}.mv-a{color:var(--amb)}.mv-r{color:var(--red)}.mv-w{color:var(--t2)}
+
+/* DRINK CARDS */
+.dc{background:var(--s1);border:0.5px solid var(--b1);border-radius:14px;margin-bottom:8px;overflow:hidden;transition:border-color .3s}
+.dc.low{border-color:#ff7a4545}.dc.empty{border-color:#ff4f8b45;opacity:.85}
+.dc-top{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.dc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dc-info{flex:1;min-width:0}
+.dc-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1)}
+.dc-sub{font-size:10px;color:var(--t3);font-family:var(--fm);margin-top:2px}
+.dc-rem{font-family:var(--fh);font-size:28px;font-weight:700}
+.dc-rem.ok{color:var(--grn)}.dc-rem.low{color:var(--amb)}.dc-rem.empty{color:var(--red)}
+.dc-prog{height:3px;background:var(--b1);margin:0 14px}
+.dc-fill{height:3px;border-radius:2px;transition:width .4s}
+.dc-fill.ok{background:linear-gradient(90deg,#4a6b10,var(--grn))}.dc-fill.low{background:linear-gradient(90deg,#6b3a1a,var(--amb))}.dc-fill.empty{background:var(--red)}
+.dc-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--b1)}
+.tap{background:var(--s2);padding:14px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;border:none;font-family:var(--fb);-webkit-tap-highlight-color:transparent;transition:background .1s}
+.tap:active{transform:scale(.94)}
+.tap.minus:active{background:#ff4f8b18}
+.tap.undo:active{background:#ff7a4518}
+.tap.done-tap:active{background:#ffc44718}
+.tap-icon{font-size:22px;line-height:1}
+.tap-lbl{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;font-family:var(--fm)}
+
+/* ADD BOTTLES ROW */
+.add-btl-row{display:none;padding:10px 14px;background:#ffc44708;border-top:0.5px solid #ffc44720;align-items:center;gap:8px}
+.add-btl-row.open{display:flex}
+.add-btl-inp{width:64px;background:var(--s2);border:0.5px solid var(--b2);border-radius:8px;padding:8px;color:var(--t1);font-size:18px;font-family:var(--fh);font-weight:700;text-align:center;outline:none}
+.add-btl-inp:focus{border-color:var(--gold)}
+.add-btl-label{font-size:11px;color:var(--t2);flex:1;line-height:1.4}
+.add-btl-ok{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f;border:none;border-radius:8px;padding:8px 14px;font-size:11px;font-family:var(--fb);font-weight:700;cursor:pointer}
+.add-btl-no{background:transparent;border:0.5px solid var(--b2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t3);cursor:pointer;font-family:var(--fb)}
+.restock-badge{font-size:9px;font-family:var(--fm);background:#ffc44718;color:var(--gold2);border:0.5px solid var(--gold-dim);border-radius:10px;padding:2px 7px;margin-left:6px}
+
+/* WA FEED */
+.wa-feed{max-height:160px;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.wa-msg{background:#0d1f0d;border:0.5px solid #25d36625;border-radius:8px 8px 8px 2px;padding:9px 11px;font-size:11px;color:#a8e8a8;line-height:1.5}
+.wa-time{font-size:9px;color:#25d36650;text-align:right;margin-top:3px;font-family:var(--fm)}
+.log-item{display:flex;justify-content:space-between;gap:8px;padding:9px 14px;border-bottom:0.5px solid var(--b1);font-size:11px}
+.log-item:last-child{border-bottom:none}
+
+/* CONFIRM BOX */
+.confirm-box{background:#ffc44710;border:0.5px solid var(--gold-dim);border-radius:12px;padding:16px;margin-top:4px}
+
+/* PHOTO SLOTS */
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.photo-grid.three{grid-template-columns:1fr 1fr 1fr}
+.photo-slot{position:relative;aspect-ratio:1;border:1px dashed var(--b3);border-radius:12px;background:var(--s2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;overflow:hidden;transition:border-color .2s}
+.photo-slot:active{border-color:var(--gold)}
+.photo-slot.filled{border:1.5px solid var(--gold);box-shadow:0 0 12px var(--gold-dim)}
+.photo-slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.photo-slot .ps-icon{font-size:24px}
+.photo-slot .ps-lbl{font-size:9px;color:var(--t3);font-family:var(--fm);text-align:center;padding:0 6px;line-height:1.4}
+.photo-slot .ps-check{position:absolute;top:5px;right:5px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;z-index:2}
+.photo-note{font-size:11px;color:var(--t3);line-height:1.6;margin-bottom:12px}
+
+/* CLOSING ITEM ROWS */
+.close-item{background:var(--s2);border:0.5px solid var(--b1);border-radius:12px;padding:12px;margin-bottom:8px}
+.close-item-name{font-size:13px;font-weight:600;color:var(--t1);margin-bottom:2px}
+.close-item-sub{font-size:9px;color:var(--t3);font-family:var(--fm);margin-bottom:10px}
+.close-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.close-inp-wrap label{display:block;font-size:8px;color:var(--gold);font-family:var(--fm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.close-inp{width:100%;background:var(--s1);border:0.5px solid var(--b2);border-radius:8px;padding:10px;color:var(--gold2);font-size:16px;font-family:var(--fh);font-weight:700;text-align:center;outline:none}
+.close-inp:focus{border-color:var(--gold)}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:linear-gradient(135deg,var(--gold),var(--gold2));color:#150f1f;padding:12px 22px;border-radius:12px;font-size:13px;font-weight:700;font-family:var(--fb);opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap;max-width:88vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.divider{height:0.5px;background:var(--b1);margin:12px 0}
+/* ---- Store indent / supplies / returns ---- */
+.sp-grp{font-size:9px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;font-family:var(--fm);margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center}
+.sp-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:0.5px solid var(--b1)}
+.sp-row:first-of-type{border-top:none}
+.sp-name{flex:1;min-width:0;font-size:13px;font-weight:500;color:var(--t1)}
+.sp-sub{font-size:9px;color:var(--t3);font-family:var(--fm);margin-top:2px}
+.sp-inp{width:64px;background:var(--s1);border:0.5px solid var(--b2);border-radius:8px;padding:8px 4px;color:var(--gold2);font-size:16px;font-family:var(--fh);font-weight:700;text-align:center;outline:none}
+.sp-inp.diff{border-color:var(--red);color:var(--red)}
+.sp-tag{font-size:8px;font-family:var(--fm);padding:2px 7px;border-radius:8px;letter-spacing:.04em}
+.sp-ok{background:#c6f43215;color:var(--grn);border:0.5px solid #c6f43240}
+.sp-warn{background:#ff7a4515;color:var(--amb);border:0.5px solid #ff7a4540}
+.sp-bad{background:#ff4f8b15;color:var(--red);border:0.5px solid #ff4f8b40}
+.src-toggle{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.src-btn{padding:10px;border-radius:10px;border:0.5px solid var(--b2);background:var(--s2);color:var(--t2);font-size:12px;font-weight:600;text-align:center;cursor:pointer}
+.src-btn.on{border-color:var(--gold);color:var(--gold2);background:#ffc44715}
+.rt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.rt-grid label{display:block;font-size:8px;color:var(--gold);font-family:var(--fm);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;text-align:center}
+#net-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--amb);color:#1a1000;font-size:11px;font-weight:700;text-align:center;padding:6px;font-family:var(--fm)}
+.error-screen{display:flex;align-items:center;justify-content:center;min-height:80vh;padding:24px;text-align:center}
+
+/* ===== POLISH ===== */
+.scroll-body{scroll-behavior:smooth}
+.btn-gold,.btn-grn,.btn-wa{box-shadow:0 6px 16px rgba(0,0,0,.28)}
+.dc{transition:border-color .3s,transform .1s}
+.dc:active{transform:scale(.996)}
+.inp:focus{box-shadow:0 0 0 3px var(--gold-dim)}
+.qty-btn{transition:background .12s,transform .1s}
+.qty-btn:active{transform:scale(.9)}
+.tap{transition:background .1s,transform .08s}
+.photo-slot{transition:border-color .2s,box-shadow .2s,transform .1s}
+.photo-slot:active{transform:scale(.98)}
+
+.qchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.qc{padding:7px 12px;border-radius:20px;border:1.5px solid var(--b2);background:var(--s2);font-size:11px;font-weight:800;color:var(--t2);cursor:pointer;user-select:none;white-space:nowrap}
+.qc:active{transform:scale(.95)}
+.qc.on{background:var(--aqua);border-color:var(--aqua);color:#06302c}
+.same-team{display:none;width:100%;margin-bottom:12px;padding:13px;border-radius:16px;border:1.5px dashed var(--lime);background:#c6f43212;color:var(--lime);font-weight:800;font-size:12px;cursor:pointer;text-align:left;line-height:1.5}
+/* ================= REBELZ NIGHT THEME (matches client page) ================= */
+body{background:radial-gradient(520px 420px at 112% -6%,#ff4f8b2e,transparent 62%),radial-gradient(480px 420px at -22% 48%,#3de0d21f,transparent 62%),radial-gradient(520px 420px at 118% 104%,#ff7a4524,transparent 62%),var(--bg)!important;background-attachment:fixed!important}
+body::before{display:none!important}
+.hdr{background:#150f1fe8!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.hdr::after{height:2px!important;background:linear-gradient(90deg,var(--tang),var(--pink),var(--lav))!important}
+.brand-name,.hdr-brand{font-family:var(--fh)!important;font-weight:800!important;letter-spacing:0!important}
+.brand-name span,.hdr-brand span{font-style:italic;font-weight:500;color:var(--honey)!important}
+.brand-tag,.hdr-tag{color:var(--pink)!important;font-weight:700}
+.brand-logo,.hdr-logo{border-color:var(--honey)!important;box-shadow:0 0 0 3px #ffc44722!important}
+.page-tag,.page-label{font-family:var(--fx)!important;font-size:9px!important;letter-spacing:.14em!important;color:var(--t3)!important}
+.card{border-radius:22px!important;border:1.5px solid var(--b1)!important;background:var(--s1)!important}
+.card::before{display:none!important}
+.card-title{font-family:var(--fx)!important;font-size:9px!important;font-weight:700!important;letter-spacing:.12em!important;color:var(--honey)!important}
+.sec-lbl{font-family:var(--fh)!important;font-style:italic;font-size:22px!important;font-weight:700!important;text-transform:none!important;letter-spacing:0!important;color:var(--t1)!important}
+.sec-lbl::after{background:linear-gradient(90deg,var(--b2),transparent)!important}
+.field label,label{font-weight:700!important;letter-spacing:.08em!important}
+.inp,.fb-inp{border-radius:14px!important;border:1.5px solid var(--b2)!important;background:var(--s2)!important;color:var(--t1)!important}
+.inp:focus{border-color:var(--aqua)!important;box-shadow:0 0 0 3px #3de0d226}
+.inp::placeholder{color:var(--t4)}
+select.inp{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23ffc447' stroke-width='1.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 13px center!important}
+.btn{border-radius:16px!important;font-weight:700!important;letter-spacing:.02em}
+.btn-gold{background:var(--honey)!important;color:#2a1a00!important;box-shadow:0 10px 26px #ffc4472e!important}
+.btn-ghost{border:1.5px solid var(--b2)!important;color:var(--t2)!important}
+.btn-wa{background:#25d366!important;color:#06280f!important}
+.btn-red{border:1.5px solid #ff4f8b66!important;color:var(--pink)!important}
+.toast{background:var(--lime)!important;color:#1a2100!important;border-radius:14px!important;font-weight:800!important;box-shadow:0 10px 30px #00000066!important}
+.fchip{border-radius:30px!important;border:1.5px solid var(--b2)!important;font-weight:700!important;font-family:var(--fb)!important}
+.fchip.active{background:var(--pink)!important;color:#fff!important;border-color:var(--pink)!important}
+/* chunky numbers */
+.stat-v,.metric-v,.qty-num,.dc-rem,.qn,.close-inp,.sp-inp,.pin-num{font-family:var(--fx)!important;font-weight:800!important}
+.stat-box,.metric{border-radius:22px!important;border:none!important;color:#1b1328!important}
+.stat-box::before{display:none!important}
+.stats-grid .stat-box:nth-child(1),.metrics .metric:nth-child(1){background:var(--honey)!important}
+.stats-grid .stat-box:nth-child(2),.metrics .metric:nth-child(2){background:var(--aqua)!important}
+.stats-grid .stat-box:nth-child(3),.metrics .metric:nth-child(3){background:var(--lime)!important}
+.stats-grid .stat-box:nth-child(4),.metrics .metric:nth-child(4){background:var(--pink)!important}
+.stat-box .stat-v,.stat-box .stat-l,.metric .metric-v,.metric .metric-l{color:#1b1328!important}
+.stat-box .stat-l,.metric .metric-l{font-weight:800!important;opacity:.75}
+.stats-grid .stat-box:nth-child(4) .stat-v,.stats-grid .stat-box:nth-child(4) .stat-l,.metrics .metric:nth-child(4) .metric-v,.metrics .metric:nth-child(4) .metric-l{color:#fff!important}
+.ev-card,.dc,.tpl-item,.close-item{border-radius:20px!important;border:1.5px solid var(--b1)!important;background:var(--s1)!important}
+.ev-card.live,.dc.ok{border-color:#c6f43255!important}
+.dc.low{border-color:#ff7a4566!important}.dc.empty{border-color:#ff4f8b66!important}
+.qty-btn,.qb{border-radius:12px!important;border:1.5px solid var(--b2)!important;background:var(--s3)!important;color:var(--honey)!important}
+.tap{border-radius:14px!important}
+.modal{border-radius:28px 28px 0 0!important;border-top:2px solid var(--pink)!important;background:var(--s1)!important}
+.photo-slot{border-radius:18px!important;border:2px dashed var(--b2)!important}
+.status-pill.sp-live,.live-pill{border-radius:30px!important}
+::selection{background:var(--pink);color:#fff}
+</style>
+</head>
+<body>
+
+<!-- ERROR -->
+<div class="screen active" id="scr-error">
+  <div class="hdr">
+    <div class="hdr-main"><img class="hdr-logo" src="rebelz%20bartending%20logo.png"/><div><div class="hdr-brand">Rebelz <span>Bartending</span></div><div class="hdr-tag">✦ Think of Party, Think of Us ✦</div></div></div>
+  </div>
+  <div class="error-screen">
+    <div>
+      <div style="font-size:44px;margin-bottom:16px">⚠️</div>
+      <div style="font-family:var(--fh);font-size:22px;font-weight:700;margin-bottom:8px">Invalid Link</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.7">This link is not valid or has expired.<br/>Ask admin for a new bartender link.</div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="screen" id="scr-login">
+  <div class="hdr">
+    <div class="hdr-main"><img class="hdr-logo" src="rebelz%20bartending%20logo.png"/><div><div class="hdr-brand">Rebelz <span>Bartending</span></div><div class="hdr-tag">✦ Think of Party, Think of Us ✦</div></div></div>
+    <div class="hdr-sub"><div class="page-label">Bartender Panel</div><div style="font-size:9px;color:var(--t4);font-family:var(--fm)" id="login-ev-label">—</div></div>
+  </div>
+  <div class="scroll-body">
+    <div style="text-align:center;padding:32px 0 24px">
+      <div style="font-size:44px;margin-bottom:14px">🍸</div>
+      <div style="font-family:var(--fh);font-size:24px;font-weight:700;margin-bottom:6px;color:var(--gold2)" id="login-ev-name">Loading...</div>
+      <div style="font-size:13px;color:var(--t2);margin-bottom:4px" id="login-ev-date">—</div>
+      <div style="font-size:11px;color:var(--t3);font-family:var(--fm)">Enter your PIN to access the panel</div>
+    </div>
+    <div class="field">
+      <label>Your PIN</label>
+      <input class="inp" id="l-pin" type="tel" maxlength="6" placeholder="••••" style="font-size:28px;text-align:center;letter-spacing:14px;font-family:var(--fm)"/>
+    </div>
+    <div id="l-err" style="color:var(--red);font-size:12px;text-align:center;margin-bottom:10px;display:none">Wrong PIN. Try again.</div>
+    <button class="btn btn-gold" id="login-btn">Enter Panel ✦</button>
+  </div>
+</div>
+
+<!-- MENU CARD (only when admin attached a menu) -->
+<div class="screen" id="scr-menu">
+  <div class="hdr">
+    <div class="hdr-main"><img class="hdr-logo" src="rebelz%20bartending%20logo.png"/><div><div class="hdr-brand">Rebelz <span>Bartending</span></div><div class="hdr-tag">✦ Think of Party, Think of Us ✦</div></div></div>
+    <div class="hdr-sub"><div class="page-label">Menu Card</div><div class="live-pill"><div class="live-dot"></div><div class="live-txt" id="menu-ev-label">—</div></div></div>
+  </div>
+  <div class="scroll-body">
+    <div style="background:#ffc44710;border:0.5px solid var(--gold-dim);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--gold2);line-height:1.7">
+      <strong>Before you start — Today's Menu:</strong> Read every drink. Prepare garnishes, syrups, fruits &amp; glassware as per this menu.
+    </div>
+    <img id="menu-img" src="" alt="Menu Card" style="width:100%;border-radius:12px;border:1px solid var(--gold-dim);display:block;margin-bottom:12px;box-shadow:0 10px 30px rgba(0,0,0,.5)"/>
+    <div id="menu-rev-note" style="display:none;font-size:11px;color:var(--grn);font-family:var(--fm);text-align:center;margin-bottom:10px"></div>
+    <button class="btn btn-gold" id="menu-ok-btn" onclick="menuReviewed()">✅ Menu Reviewed — Continue</button>
+    <div style="height:10px"></div>
+  </div>
+</div>
+
+<!-- TEAM DETAILS -->
+<div class="screen" id="scr-team">
+  <div class="hdr">
+    <div class="hdr-main"><img class="hdr-logo" src="rebelz%20bartending%20logo.png"/><div><div class="hdr-brand">Rebelz <span>Bartending</span></div><div class="hdr-tag">✦ Think of Party, Think of Us ✦</div></div></div>
+    <div class="hdr-sub"><div class="page-label">Team Details</div><div class="live-pill"><div class="live-dot"></div><div class="live-txt" id="team-ev-label">—</div></div></div>
+  </div>
+  <div class="scroll-body">
+    <div style="background:#ffc44710;border:0.5px solid var(--gold-dim);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--gold2);line-height:1.7">
+      <strong>Step 1 of 3 — Your Team:</strong> Enter who is working this event today. This goes into the event record.
+    </div>
+    <div class="card">
+      <div class="card-title">Bartenders Working Today</div>
+      <div class="field"><label>Number of Bartenders *</label><input class="inp" id="t-count" type="number" min="1" max="20" placeholder="e.g. 3" style="text-align:center;font-size:20px;font-family:var(--fh);font-weight:700"/></div>
+      <button class="same-team" id="same-team" onclick="sameTeam()"></button>
+      <div id="t-names"></div>
+    </div>
+    <button class="btn btn-gold" onclick="saveTeam()">✦ Confirm Team — Continue</button>
+    <div style="height:10px"></div>
+  </div>
+</div>
+
+<!-- STOCK SETUP -->
+<div class="screen" id="scr-setup">
+  <div class="hdr">
+    <div class="hdr-main"><img class="hdr-logo" src="rebelz%20bartending%20logo.png"/><div><div class="hdr-brand">Rebelz <span>Bartending</span></div><div class="hdr-tag">✦ Think of Party, Think of Us ✦</div></div></div>
+    <div class="hdr-sub"><div class="page-label">Set Opening Stock</div><div class="live-pill"><div class="live-dot"></div><div class="live-txt" id="setup-ev-label">—</div></div></div>
+  </div>
+  <div class="scroll-body">
+    <div style="background:#ff7a4512;border:0.5px solid #ff7a4530;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--amb);line-height:1.7">
+      <strong>Step 2 of 3 — Opening Stock:</strong> Add each brand one by one, exactly matching what the client has brought. Then photos → confirm → go live.
+    </div>
+    <div class="card" id="indent-card" style="display:none;border-color:var(--gold-dim)"></div>
+    <div class="card">
+      <div class="card-title">Step 1 — Alcoholic Beverages</div>
+      <div style="font-size:10px;color:var(--t3);margin-bottom:10px;font-family:var(--fm)">Add one brand at a time:</div>
+      <div class="field"><label>Type</label>
+        <select class="inp" id="sa-cat">
+          <option value="whiskey">Whiskey</option><option value="vodka">Vodka</option>
+          <option value="gin">Gin</option><option value="rum">Rum</option>
+          <option value="tequila">Tequila</option><option value="brandy">Brandy</option>
+          <option value="beer">Beer</option><option value="wine">Wine</option>
+          <option value="other">Others</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 72px;gap:8px;margin-bottom:8px">
+        <input class="inp" id="sa-name" list="dl-brands" autocomplete="off" placeholder="Brand — start typing, e.g. Royal Stag" style="font-size:13px"/>
+        <input class="inp" id="sa-qty" type="number" min="1" value="1" style="text-align:center;font-size:13px"/>
+      </div>
+      <div class="qchips" id="sa-chips"></div>
+      <button class="btn btn-gold" onclick="setupAdd()" style="font-size:12px;padding:11px">+ Add Bottle / Brand</button>
+      <div class="divider"></div>
+      <div id="setup-items"></div>
+    </div>
+    <div class="card" id="nonalc-card" style="display:none;border-color:var(--gold-dim)">
+      <div class="card-title" style="color:var(--gold2)">Step 2 — Non-Alcoholic (Rebelz Supply)</div>
+      <div style="font-size:10px;color:var(--t3);margin-bottom:10px;font-family:var(--fm)">Just enter the count for each item present. Leave the rest blank.</div>
+      <div id="na-fixed"></div>
+      <div class="divider"></div>
+      <div style="font-size:10px;color:var(--t3);margin-bottom:8px;font-family:var(--fm)">Something else? Add it here:</div>
+      <div style="display:grid;grid-template-columns:1fr 72px;gap:8px;margin-bottom:8px">
+        <input class="inp" id="na-other-name" placeholder="Other item — e.g. Coconut Water" style="font-size:13px"/>
+        <input class="inp" id="na-other-qty" type="number" min="1" value="1" style="text-align:center;font-size:13px"/>
+      </div>
+      <button class="btn btn-ghost" onclick="setupAddNA()" style="border-color:var(--gold-dim);color:var(--gold2);font-size:12px;padding:11px">+ Add Other Item</button>
+      <div class="divider"></div>
+      <div id="setup-items-na"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Step 3 — Opening Photos (Required)</div>
+      <div class="photo-note">Attach <strong style="color:var(--gold2)">2 photos</strong> before going live: ① Event entrance / venue &nbsp;② Bar counter with your team. <em>Visible to Admin only.</em></div>
+      <div class="photo-grid">
+        <div class="photo-slot" id="op-slot-0" onclick="pickPhoto('open',0)">
+          <div class="ps-icon">🏛️</div><div class="ps-lbl">Photo 1<br/>Entrance / Venue</div>
+        </div>
+        <div class="photo-slot" id="op-slot-1" onclick="pickPhoto('open',1)">
+          <div class="ps-icon">🍸</div><div class="ps-lbl">Photo 2<br/>Bar Counter + Team</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Step 4 — Confirm & Go Live</div>
+      <div id="setup-summary" style="font-size:12px;color:var(--t2);font-family:var(--fm);line-height:1.9;margin-bottom:14px">No drinks added yet.</div>
+      <div class="confirm-box">
+        <div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--gold2);margin-bottom:6px">Ready to confirm?</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.6">Once confirmed, the customer dashboard goes live. Double check quantities before confirming.</div>
+        <button class="btn btn-gold" onclick="confirmStock()" style="margin-bottom:0">✦ Confirm Opening Stock — Go Live</button>
+      </div>
+      <div style="height:8px"></div>
+      <button class="btn btn-ghost" style="font-size:12px;padding:10px" onclick="clearSetup()">Clear All Drinks</button>
+    </div>
+    <div style="height:10px"></div>
+  </div>
+</div>
+
+<!-- MAIN PANEL -->
+<div class="screen" id="scr-panel">
+  <div class="hdr">
+    <div class="hdr-main"><img class="hdr-logo" src="rebelz%20bartending%20logo.png"/><div><div class="hdr-brand">Rebelz <span>Bartending</span></div><div class="hdr-tag">✦ Think of Party, Think of Us ✦</div></div></div>
+    <div class="hdr-sub">
+      <div class="live-pill" id="panel-chip"><div class="live-dot"></div><div class="live-txt" id="panel-ev-label">—</div></div>
+      <select class="inp" id="ev-status" style="width:auto;padding:5px 28px 5px 10px;font-size:11px;border-radius:8px" onchange="changeStatus(this.value)">
+        <option value="setup">Setting up</option>
+        <option value="live">● Live now</option>
+        <option value="closed">✓ Closed</option>
+      </select>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--gold2)" id="panel-ev-name">—</div>
+          <div style="font-size:10px;color:var(--t3);font-family:var(--fm);margin-top:2px" id="panel-ev-meta">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-l">Given</div><div class="metric-v mv-w" id="bm-given">0</div></div>
+      <div class="metric"><div class="metric-l">Used</div><div class="metric-v mv-a" id="bm-used">0</div></div>
+      <div class="metric"><div class="metric-l">Left</div><div class="metric-v mv-g" id="bm-left">0</div></div>
+      <div class="metric"><div class="metric-l">Empty</div><div class="metric-v mv-r" id="bm-done">0</div></div>
+    </div>
+    <div style="background:#ffc44710;border:0.5px solid var(--gold-dim);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--gold2);line-height:1.75">
+      <strong>How to use this panel:</strong><br/>
+      • Tap <strong>− Consumed</strong> each time a bottle finishes<br/>
+      • <strong>+ Add Bottles</strong> if the client gives more of a brand<br/>
+      • <strong>+ New Drink</strong> below if the client brings something new<br/>
+      • Tap <strong>🔒 Close Event</strong> at the end to send the final report
+    </div>
+    <div style="font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--fm);margin-bottom:10px">Live Consumption — Tap to Update</div>
+    <div id="drink-cards"></div>
+
+    <!-- REBELZ SUPPLIES (store indent + mid-event items) -->
+    <div class="card" id="supplies-card" style="display:none;border-color:var(--gold-dim)"></div>
+
+    <!-- ADD NEW DRINK -->
+    <div class="card" style="border-color:var(--gold-dim)">
+      <div class="card-title" style="color:var(--gold2)">+ New Drink Added by Client</div>
+      <div style="font-size:11px;color:var(--t3);margin-bottom:12px;line-height:1.6">Use when client brings a completely new drink mid-event.</div>
+      <div class="field"><label>Drink Name</label><input class="inp" id="live-add-name" list="dl-brands-live" autocomplete="off" placeholder="Start typing — e.g. Black Dog"/></div>
+      <div style="display:grid;grid-template-columns:1fr 80px;gap:8px">
+        <div class="field"><label>Category</label>
+          <select class="inp" id="live-add-cat">
+            <option value="whiskey">Whiskey</option><option value="vodka">Vodka</option>
+            <option value="gin">Gin</option><option value="rum">Rum</option>
+            <option value="tequila">Tequila</option><option value="brandy">Brandy</option>
+            <option value="beer">Beer</option><option value="wine">Wine</option>
+            <option value="other">Others</option>
+            <option value="juices">Juices (Non-Alc)</option><option value="softdrinks">Soft Drinks (Non-Alc)</option>
+            <option value="soda">Soda (Non-Alc)</option><option value="water">Water (Non-Alc)</option>
+          </select>
+        </div>
+        <div class="field"><label>Qty</label><input class="inp" id="live-add-qty" type="number" min="1" value="1" style="text-align:center"/></div>
+      </div>
+      <div class="qchips" id="live-chips"></div>
+      <button class="btn btn-ghost" style="border-color:var(--gold-dim);color:var(--gold2);font-size:12px;padding:11px" onclick="addNewDrinkLive()">+ Add to Live Stock</button>
+    </div>
+
+    <!-- NOTIFY -->
+    <div class="card">
+      <div class="card-title">Notify Client</div>
+      <button class="btn btn-gold" onclick="saveAndNotify()">💾 Save + Send WhatsApp Update</button>
+      <button class="btn btn-wa" onclick="sendManualWA()">📱 Send Status on WhatsApp Now</button>
+      <button class="btn btn-red" onclick="closeEventFn()">🔒 Close Event + Final Report</button>
+    </div>
+
+    <!-- WA FEED -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 14px;border-bottom:0.5px solid var(--b1)"><div class="card-title" style="margin:0">WhatsApp Messages</div></div>
+      <div class="wa-feed" id="wa-feed">
+        <div style="text-align:center;padding:16px;font-size:11px;color:var(--t3);font-family:var(--fm)" id="wa-empty">Messages appear here as you update</div>
+      </div>
+    </div>
+
+    <!-- LOG -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:12px 14px;border-bottom:0.5px solid var(--b1)"><div class="card-title" style="margin:0">Activity Log</div></div>
+      <div id="bar-log"></div>
+    </div>
+    <div style="height:10px"></div>
+  </div>
+</div>
+
+<!-- CLOSING SCREEN -->
+<div class="screen" id="scr-closing">
+  <div class="hdr">
+    <div class="hdr-main"><img class="hdr-logo" src="rebelz%20bartending%20logo.png"/><div><div class="hdr-brand">Rebelz <span>Bartending</span></div><div class="hdr-tag">✦ Think of Party, Think of Us ✦</div></div></div>
+    <div class="hdr-sub"><div class="page-label">Closing — Final Verification</div><div class="live-pill"><div class="live-dot"></div><div class="live-txt" id="closing-ev-label">—</div></div></div>
+  </div>
+  <div class="scroll-body">
+    <div style="background:#ff4f8b12;border:0.5px solid #ff4f8b30;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--red);line-height:1.7">
+      <strong>Before closing:</strong> For <strong>alcohol</strong>, count the open bottles and leftover ML. Non-alcoholic drinks only show what was consumed — no bottle count needed. Attach 3 closing photos, then close. The final WhatsApp report goes out as usual.
+    </div>
+    <div class="card">
+      <div class="card-title">Step 1 — Open Bottles & Leftover ML (Alcohol only)</div>
+      <div class="photo-note">For each <strong style="color:var(--gold2)">alcohol</strong> drink: how many bottles are <strong style="color:var(--gold2)">open</strong> and roughly how much <strong style="color:var(--gold2)">ML is left</strong>. Non-alcoholic items just show consumed.</div>
+      <div id="close-items"></div>
+    </div>
+    <div class="card" id="return-card" style="display:none;border-color:var(--gold-dim)"></div>
+    <div class="card">
+      <div class="card-title" id="cl-photo-title">Step 2 — Closing Photos (Required)</div>
+      <div class="photo-note">Attach <strong style="color:var(--gold2)">3 photos</strong> of the closing stock / bar counter. <em>Visible to Admin only.</em></div>
+      <div class="photo-grid three">
+        <div class="photo-slot" id="cl-slot-0" onclick="pickPhoto('close',0)">
+          <div class="ps-icon">📷</div><div class="ps-lbl">Photo 1</div>
+        </div>
+        <div class="photo-slot" id="cl-slot-1" onclick="pickPhoto('close',1)">
+          <div class="ps-icon">📷</div><div class="ps-lbl">Photo 2</div>
+        </div>
+        <div class="photo-slot" id="cl-slot-2" onclick="pickPhoto('close',2)">
+          <div class="ps-icon">📷</div><div class="ps-lbl">Photo 3</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="cl-close-title">Step 3 — Close Event</div>
+      <div class="confirm-box">
+        <div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--gold2);margin-bottom:6px">Ready to close?</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.6">Final closing report will be sent on WhatsApp to client and manager — same as always.</div>
+        <button class="btn btn-red" onclick="finalizeClose()" style="margin-bottom:0;background:linear-gradient(135deg,#8a1f4a,var(--red));border:none;color:#fff">🔒 Close Event + Send Final Report</button>
+      </div>
+      <div style="height:8px"></div>
+      <button class="btn btn-ghost" onclick="cancelClosing()" style="font-size:12px;padding:10px">← Back to Live Panel</button>
+    </div>
+    <div style="height:10px"></div>
+  </div>
+</div>
+
+<input type="file" id="photo-input" accept="image/*" style="display:none"/>
+
+<div class="toast" id="toast"></div>
+<div id="net-banner">📶 Weak / no network — your entries are saved on this phone and will sync automatically</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDcrx5tOL1Y2TWiz1VFfCAC_OagARggGNE",
+  authDomain: "rebelz-tracker.firebaseapp.com",
+  databaseURL: "https://rebelz-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "rebelz-tracker",
+  storageBucket: "rebelz-tracker.appspot.com",
+  messagingSenderId: "234156658582",
+  appId: "1:234156658582:web:26597fc333698b0778d7b7"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
+
+const COLORS={whiskey:'#c8860a',gin:'#0e9e80',vodka:'#7c5cc4',beer:'#3a7a20',wine:'#aa3870',rum:'#c04020',tequila:'#d4a017',brandy:'#8b4513',other:'#888',juices:'#e87020',softdrinks:'#c02040',soda:'#4090c8',tonic:'#5bb3d0',water:'#30a8c8',syrups:'#c99a3c',gingerale:'#8fb84a','nonalc-other':'#888'};
+const NONALC_CATS=['juices','softdrinks','soda','tonic','water','syrups','gingerale','nonalc-other'];
+const NA_CORE=[
+  {key:'juices',label:'Juices'},
+  {key:'softdrinks',label:'Soft Drinks'},
+  {key:'soda',label:'Soda Water'},
+  {key:'tonic',label:'Tonic Water'},
+  {key:'water',label:'Drinking Water'},
+  {key:'syrups',label:'Syrups'},
+  {key:'gingerale',label:'Ginger Ale'}
+];
+function isNonAlc(cat){return NONALC_CATS.indexOf(cat)>=0;}
+
+let curEv=null,evId=null,setupDrinks=[],waLog=[];
+let openPhotos=[null,null],closePhotos=[null,null,null],photoTarget=null;
+
+// ---- PHOTO HELPERS (base64, max 600px, 0.7 quality) ----
+function compressImage(file,cb){
+  const img=new Image();const rd=new FileReader();
+  rd.onload=e=>{img.src=e.target.result;};
+  img.onload=()=>{
+    const max=600;let w=img.width,h=img.height;
+    if(w>h&&w>max){h=Math.round(h*max/w);w=max;}else if(h>max){w=Math.round(w*max/h);h=max;}
+    const c=document.createElement('canvas');c.width=w;c.height=h;
+    c.getContext('2d').drawImage(img,0,0,w,h);
+    cb(c.toDataURL('image/jpeg',0.7));
+  };
+  rd.readAsDataURL(file);
+}
+window.pickPhoto=function(type,idx){
+  photoTarget={type,idx};
+  gid('photo-input').value='';
+  gid('photo-input').click();
+};
+gid('photo-input').addEventListener('change',function(e){
+  const file=e.target.files&&e.target.files[0];
+  if(!file||!photoTarget)return;
+  toast('Processing photo...');
+  compressImage(file,b64=>{
+    if(photoTarget.type==='open'){openPhotos[photoTarget.idx]=b64;renderSlot('op-slot-'+photoTarget.idx,b64);}
+    else{closePhotos[photoTarget.idx]=b64;renderSlot('cl-slot-'+photoTarget.idx,b64);}
+    toast('Photo attached ✓');
+  });
+});
+function renderSlot(slotId,b64){
+  const s=gid(slotId);if(!s)return;
+  s.classList.add('filled');
+  s.innerHTML='<img src="'+b64+'"/><div class="ps-check">✓</div>';
+}
+
+function gid(id){return document.getElementById(id);}
+function toast(msg,dur=2200){const t=gid('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+function nowTime(){return new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});}
+function nowISO(){return new Date().toISOString();}
+function fmtDate(d){try{return d?new Date(d+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'—';}catch(e){return d||'—';}}
+function getRem(it){return Math.max(0,it.qty-(it.used||0));}
+function getSt(it){const r=getRem(it);if(r===0)return 'empty';return(r/it.qty)<=0.25?'low':'ok';}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));gid(id).classList.add('active');}
+function saveToFirebase(){if(!curEv||!evId)return;set(ref(db,'events/'+evId),curEv);}
+
+const params=new URLSearchParams(window.location.search);
+evId=params.get('ev');
+
+// Load the event data. Runs only after anonymous sign-in succeeds
+// (needed so the locked database allows this page to read/write).
+function initEvent(){
+  if(!evId){showScreen('scr-error');return;}
+  onValue(ref(db,'events/'+evId),(snap)=>{
+    const data=snap.val();
+    if(!data){showScreen('scr-error');return;}
+    if(!curEv){
+      curEv=data;
+      gid('login-ev-label').textContent=evId;
+      gid('login-ev-name').textContent=data.event_name;
+      gid('login-ev-date').textContent=data.client_name+' · '+fmtDate(data.event_date)+(data.guests?' · '+data.guests+' guests':'');
+      showScreen('scr-login');
+      // PIN remembered on this phone -> open straight to where they left off
+      let sp=null; try{sp=localStorage.getItem('rbz_pin_'+evId);}catch(e){}
+      if(sp&&data.bartender_pin!=null&&sp===String(data.bartender_pin)){ gid('l-pin').value=sp; doLogin(); }
+    } else {
+      const wasLoggedIn=curEv._loggedIn;
+      curEv=data;curEv._loggedIn=wasLoggedIn;
+      if(wasLoggedIn&&curEv.stock_confirmed){renderCards();renderLog();renderSupplies();}
+      if(wasLoggedIn&&gid('scr-setup').classList.contains('active')) renderIndentCard('setup');
+      if(wasLoggedIn&&gid('scr-menu').classList.contains('active')) renderMenuScreen();
+    }
+  });
+}
+
+// Silent anonymous sign-in — the bartender still just opens the link + enters
+// the PIN; there is NO extra login screen. This token lets the locked database
+// accept this page. If anonymous auth is not enabled in Firebase, show error.
+let evInit=false;
+onAuthStateChanged(auth,(user)=>{ if(user && !evInit){ evInit=true; initEvent(); } });
+signInAnonymously(auth).catch((e)=>{
+  console.error('Anonymous sign-in failed:', e);
+  showScreen('scr-error');
+  toast('Connection blocked — contact admin');
+});
+
+gid('login-btn').addEventListener('click',doLogin);
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&gid('scr-login').classList.contains('active'))doLogin();});
+
+function doLogin(){
+  const pin=gid('l-pin').value.trim();
+  const err=gid('l-err');err.style.display='none';
+  if(!pin){err.textContent='Enter your PIN';err.style.display='block';return;}
+  if(curEv.bartender_pin.toString()!==pin.toString()){err.textContent='Wrong PIN. Try again.';err.style.display='block';return;}
+  curEv._loggedIn=true;waLog=[];
+  try{localStorage.setItem('rbz_pin_'+evId,pin.toString());}catch(e){}
+  if(curEv.stock_confirmed)showPanel();
+  else if(curEv.menu_img&&!(curEv.menu_reviewed&&curEv.menu_reviewed.at))showMenu();          // menu card first (only if admin attached one)
+  else if(curEv.team&&curEv.team.leader)showSetup();
+  else showTeam();
+  toast('Welcome! 🍸');
+}
+
+// ---- MENU CARD (shown before Team/Stock, only when a menu is attached) ----
+function fmtDT(iso){try{return new Date(iso).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return '';}}
+function showMenu(){
+  showScreen('scr-menu');
+  gid('menu-ev-label').textContent=curEv.event_name;
+  renderMenuScreen();
+}
+function renderMenuScreen(){
+  if(!curEv.menu_img){ // admin removed the menu meanwhile — move on
+    if(curEv.team&&curEv.team.leader)showSetup(); else showTeam();
+    return;
+  }
+  if(gid('menu-img').getAttribute('src')!==curEv.menu_img) gid('menu-img').src=curEv.menu_img;
+  const r=curEv.menu_reviewed, note=gid('menu-rev-note');
+  if(r&&r.at){
+    note.style.display='block';
+    note.textContent='✓ Reviewed'+(r.by?' by '+r.by:'')+' · '+fmtDT(r.at);
+    gid('menu-ok-btn').textContent='Continue →';
+  } else {
+    note.style.display='none';
+    gid('menu-ok-btn').textContent='✅ Menu Reviewed — Continue';
+  }
+}
+window.menuReviewed=function(){
+  const next=()=>{ if(curEv.team&&curEv.team.leader)showSetup(); else showTeam(); };
+  if(curEv.menu_reviewed&&curEv.menu_reviewed.at){ next(); return; }
+  const by=(curEv.team&&curEv.team.leader)||'';
+  const rec={by,at:nowISO()};
+  curEv.menu_reviewed=rec;
+  // write only this field so nothing else in the event is touched
+  update(ref(db,'events/'+evId),{menu_reviewed:rec}).catch(()=>{});
+  addLog('Menu card reviewed'+(by?' by '+by:''));
+  toast('Menu reviewed ✓');
+  next();
+};
+
+// ---- TEAM DETAILS (Step 1 of opening) ----
+function showTeam(){
+  showScreen('scr-team');
+  gid('team-ev-label').textContent=curEv.event_name;
+}
+gid('t-count').addEventListener('input',function(){
+  const n=Math.min(20,Math.max(0,parseInt(this.value)||0));
+  const wrap=gid('t-names');
+  let html='';
+  for(let i=0;i<n;i++){
+    const lbl=(i===0)?'Bartender 1 Name (Team Leader) *':'Bartender '+(i+1)+' Name *';
+    html+='<div class="field"><label>'+lbl+'</label><input class="inp t-name-inp" id="t-name-'+i+'" placeholder="Name"/></div>';
+  }
+  wrap.innerHTML=html;
+});
+window.saveTeam=function(){
+  const n=parseInt(gid('t-count').value)||0;
+  if(n<1){toast('Enter number of bartenders');gid('t-count').focus();return;}
+  const members=[];
+  for(let i=0;i<n;i++){
+    const v=(gid('t-name-'+i)?gid('t-name-'+i).value.trim():'');
+    if(!v){toast('Enter Bartender '+(i+1)+' name');return;}
+    members.push(v);
+  }
+  const leader=members[0]; // first bartender is the Team Leader
+  curEv.team={leader,count:n,members};
+  if(curEv.menu_reviewed&&curEv.menu_reviewed.at&&!curEv.menu_reviewed.by) curEv.menu_reviewed.by=leader; // name the reviewer
+  addLog('Team confirmed — Leader: '+leader+' · '+n+' bartender'+(n>1?'s':'')+' ('+members.join(', ')+')');
+  saveToFirebase();
+  showSetup();
+  toast('Team saved ✓');
+};
+
+function showSetup(){
+  showScreen('scr-setup');gid('setup-ev-label').textContent=curEv.event_name;
+  setupDrinks=[];
+  const useOldNA=curEv.non_alc&&!curEv.indent;   // store indent replaces the old fixed list
+  gid('nonalc-card').style.display=useOldNA?'block':'none';
+  if(useOldNA) renderNAFixed();
+  renderIndentCard('setup');
+  renderSetupItems();
+}
+
+// Build the fixed non-alcoholic count boxes (Juices, Soft Drinks, etc.)
+function renderNAFixed(){
+  const el=gid('na-fixed'); if(!el) return;
+  el.innerHTML=NA_CORE.map(item=>{
+    const cur=setupDrinks.find(d=>d.cat===item.key);
+    const val=cur?cur.qty:'';
+    const col=COLORS[item.key]||'#888';
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0"></div>
+      <div style="flex:1;font-size:13px;font-weight:500;color:var(--t1)">${item.label}</div>
+      <input class="inp" id="naq-${item.key}" type="number" min="0" value="${val}" placeholder="0" oninput="syncNAFixed()" style="width:80px;text-align:center;font-size:14px;font-family:var(--fh);font-weight:700"/>
+    </div>`;
+  }).join('');
+}
+window.syncNAFixed=function(){
+  NA_CORE.forEach(item=>{
+    const inp=gid('naq-'+item.key);
+    const q=inp?(parseInt(inp.value)||0):0;
+    const idx=setupDrinks.findIndex(d=>d.cat===item.key);
+    if(q>0){
+      if(idx>=0) setupDrinks[idx].qty=q;
+      else setupDrinks.push({name:item.label,cat:item.key,qty:q,used:0});
+    } else if(idx>=0){
+      setupDrinks.splice(idx,1);
+    }
+  });
+  renderSetupItems();
+};
+
+function renderSetupItems(){
+  const alc=setupDrinks.filter(d=>!isNonAlc(d.cat));
+  const na=setupDrinks.filter(d=>d.cat==='nonalc-other'); // list shows only custom "other" items
+  const rowHtml=(d)=>{
+    const i=setupDrinks.indexOf(d);
+    const col=COLORS[d.cat]||'#888';
+    return `<div class="tpl-item">
+      <div style="width:9px;height:9px;border-radius:50%;background:${col};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.name}</div><div style="font-size:9px;color:var(--t3);font-family:var(--fm)">${d.cat}</div></div>
+      <button class="qty-btn" onclick="setupQty(${i},-1)">−</button>
+      <div class="qty-num" id="sqty-${i}">${d.qty}</div>
+      <button class="qty-btn" onclick="setupQty(${i},1)">+</button>
+      <button class="remove-x" onclick="setupRemove(${i})">✕</button>
+    </div>`;
+  };
+  gid('setup-items').innerHTML=alc.length?alc.map(rowHtml).join(''):'<div style="text-align:center;padding:14px;font-size:11px;color:var(--t3);font-family:var(--fm)">No bottles added yet — add above</div>';
+  const naEl=gid('setup-items-na');
+  if(naEl)naEl.innerHTML=na.length?na.map(rowHtml).join(''):'<div style="text-align:center;padding:14px;font-size:11px;color:var(--t3);font-family:var(--fm)">No other items added</div>';
+  updateSetupSummary();
+}
+window.setupQty=function(i,d){setupDrinks[i].qty=Math.max(1,setupDrinks[i].qty+d);const el=gid('sqty-'+i);if(el)el.textContent=setupDrinks[i].qty;updateSetupSummary();};
+window.setupRemove=function(i){setupDrinks.splice(i,1);renderSetupItems();};
+window.setupAdd=function(){
+  const name=gid('sa-name').value.trim();if(!name){toast('Enter brand name');return;}
+  const qty=parseInt(gid('sa-qty').value)||1;const cat=gid('sa-cat').value;
+  setupDrinks.push({name,cat,qty,used:0});gid('sa-name').value='';gid('sa-qty').value='1';
+  renderSetupItems();toast(name+' added ✓');
+};
+window.setupAddNA=function(){
+  const name=gid('na-other-name').value.trim();if(!name){toast('Enter item name');return;}
+  const qty=parseInt(gid('na-other-qty').value)||1;
+  setupDrinks.push({name,cat:'nonalc-other',qty,used:0});
+  gid('na-other-name').value='';gid('na-other-qty').value='1';
+  renderSetupItems();toast(name+' added ✓');
+};
+window.clearSetup=function(){setupDrinks=[];if(curEv&&curEv.non_alc)renderNAFixed();renderSetupItems();};
+function updateSetupSummary(){
+  const el=gid('setup-summary');
+  if(!setupDrinks.length){el.textContent='No drinks added yet.';return;}
+  const total=setupDrinks.reduce((s,d)=>s+d.qty,0);
+  el.innerHTML=setupDrinks.map(d=>`${d.qty}× ${d.name}`).join('<br/>')+'<br/><strong style="color:var(--t1)">Total: '+total+' bottles / cans / items</strong>';
+}
+
+// ---- OPENING STOCK WHATSAPP TO CLIENT ----
+function buildOpeningMsg(){
+  const alc=curEv.stock.filter(i=>!isNonAlc(i.cat));
+  const na=curEv.stock.filter(i=>isNonAlc(i.cat));
+  let msg=`🍸 *Rebelz Bartending Services*\n✦ Think of Party, Think of Us ✦\n\n*OPENING STOCK CONFIRMED*\n*${curEv.event_name} — ${fmtDate(curEv.event_date)}*\n━━━━━━━━━━━━━━━\n\n📦 *Bottles/Cans You Provided:*\n${alc.map(i=>`  • ${i.name} — ${i.qty}`).join('\n')||'  None'}`;
+  if(na.length)msg+=`\n\n🥤 *Non-Alcoholic (Rebelz Supply):*\n${na.map(i=>`  • ${i.name} — ${i.qty}`).join('\n')}`;
+  msg+=`\n\n📊 *Total Given:* ${curEv.stock.reduce((s,i)=>s+i.qty,0)} items\n\n🔗 *Track Live:*\n${window.location.href.replace(/bartender\.html.*/,'')}customer.html?ev=${evId}\n\nEvent is now LIVE ✦\n\n_Rebelz Bartending Services_`;
+  return msg;
+}
+
+window.confirmStock=function(){
+  if(curEv.indent&&!indentConfirmed()){toast('📦 Confirm the store indent first (top of this page)');const c=gid('indent-card');if(c)c.scrollIntoView({behavior:'smooth'});return;}
+  if(!setupDrinks.length){toast('Add at least one drink first');return;}
+  if(!openPhotos[0]||!openPhotos[1]){toast('📷 Attach both opening photos first!');return;}
+  curEv.stock=setupDrinks.map(d=>({...d,used:0}));
+  if(!curEv.photos)curEv.photos={};
+  curEv.photos.opening=openPhotos.slice();
+  curEv.stock_confirmed=true;curEv.status='live';
+  addLog('Opening stock confirmed — '+setupDrinks.length+' drinks, '+setupDrinks.reduce((s,d)=>s+d.qty,0)+' total');
+  addLog('2 opening photos attached');
+  saveToFirebase();
+  // Send opening stock WhatsApp to client, then manager
+  const msg=buildOpeningMsg();addWAMsg(msg);
+  if(curEv.client_wa)openWA(msg,'91'+curEv.client_wa.replace(/\D/g,'').slice(-10));
+  if(curEv.owner_wa)setTimeout(()=>openWA(msg,'91'+curEv.owner_wa.replace(/\D/g,'').slice(-10)),1500);
+  showPanel();toast('Stock confirmed! Live now ✦ Opening report sent');
+};
+
+function showPanel(){
+  showScreen('scr-panel');
+  gid('panel-ev-label').textContent=curEv.event_name;
+  gid('panel-ev-name').textContent=curEv.event_name;
+  gid('panel-ev-meta').textContent=curEv.client_name+' · '+fmtDate(curEv.event_date)+' · '+(curEv.city||'')+(curEv.guests?' · '+curEv.guests+' guests':'');
+  gid('ev-status').value=curEv.status;
+  renderCards();renderLog();renderSupplies();
+}
+
+function renderMetrics(){
+  const tot=curEv.stock.reduce((s,i)=>s+i.qty,0);
+  const used=curEv.stock.reduce((s,i)=>s+(i.used||0),0);
+  gid('bm-given').textContent=tot;gid('bm-used').textContent=used;
+  gid('bm-left').textContent=Math.max(0,tot-used);
+  gid('bm-done').textContent=curEv.stock.filter(i=>getRem(i)===0).length;
+}
+
+function renderCards(){
+  renderMetrics();
+  const el=gid('drink-cards');
+  if(!curEv.stock||!curEv.stock.length){el.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3)"><div style="font-size:28px;margin-bottom:8px">🍾</div>No stock added</div>';return;}
+  el.innerHTML=curEv.stock.map((item,i)=>{
+    const rem=getRem(item);const st=getSt(item);
+    const pct=Math.round((rem/item.qty)*100);
+    const col=COLORS[item.cat]||'#888';
+    return `<div class="dc ${st}" id="dc-${i}">
+      <div class="dc-top">
+        <div class="dc-dot" style="background:${col}"></div>
+        <div class="dc-info"><div class="dc-name">${item.name}</div><div class="dc-sub">${item.cat} · used: ${item.used||0} · left: ${rem} of ${item.qty}${item.restocked?` · <span class="restock-badge">+${item.restocked} added</span>`:''}</div></div>
+        <div class="dc-rem ${st}">${rem}</div>
+      </div>
+      <div class="dc-prog"><div class="dc-fill ${st}" style="width:${pct}%"></div></div>
+      <div class="dc-btns">
+        <button class="tap minus" onclick="consumeOne(${i})" ${st==='empty'?'disabled style="opacity:.3"':''}>
+          <div class="tap-icon">−</div><div class="tap-lbl">Consumed</div>
+        </button>
+        <button class="tap undo" onclick="undoOne(${i})" ${(item.used||0)===0?'disabled style="opacity:.3"':''}>
+          <div class="tap-icon">↩</div><div class="tap-lbl">Undo</div>
+        </button>
+        <button class="tap done-tap" onclick="${st==='empty'?'restoreItem('+i+')':'markAllDone('+i+')'}">
+          <div class="tap-icon">${st==='empty'?'↺':'✓'}</div>
+          <div class="tap-lbl">${st==='empty'?'Restore':'All Done'}</div>
+        </button>
+      </div>
+      <div style="padding:7px 14px 10px;border-top:0.5px solid var(--b1);display:flex;justify-content:flex-end">
+        <button style="background:#ffc44712;border:0.5px solid var(--gold-dim);border-radius:8px;padding:5px 12px;font-size:10px;color:var(--gold2);cursor:pointer;font-family:var(--fb);font-weight:600" onclick="toggleAddBottles(${i})">+ Add Bottles</button>
+      </div>
+      <div class="add-btl-row" id="abtl-${i}">
+        <div class="add-btl-label">Extra bottles<br/>from client?</div>
+        <input class="add-btl-inp" id="abtl-qty-${i}" type="number" min="1" value="1"/>
+        <button class="add-btl-ok" onclick="addExtraBottles(${i})">Add</button>
+        <button class="add-btl-no" onclick="toggleAddBottles(${i})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function flashDc(i){const el=gid('dc-'+i);if(el){el.style.borderColor='var(--gold)';setTimeout(()=>el.style.borderColor='',700);}}
+
+window.consumeOne=function(i){
+  const it=curEv.stock[i];if(!it||getRem(it)===0)return;
+  if(!it.used)it.used=0;it.used++;flashDc(i);renderCards();
+  const rem=getRem(it);const st=getSt(it);
+  let msg=`🍸 *Rebelz Bartending — ${curEv.event_name}*\n\n*Update (${nowTime()}):*\n`;
+  if(st==='empty')msg+=`🔴 *${it.name}* fully consumed — all ${it.qty} done.`;
+  else if(st==='low')msg+=`⚠️ *${it.name}* running low — only *${rem}* remaining!`;
+  else msg+=`✅ 1 *${it.name}* consumed — *${rem}* remaining.`;
+  addLog(it.name+' — 1 consumed, '+rem+' remaining');addWAMsg(msg);saveToFirebase();
+};
+window.undoOne=function(i){const it=curEv.stock[i];if(!it||!it.used)return;it.used=Math.max(0,it.used-1);flashDc(i);renderCards();addLog('Undo: '+it.name);saveToFirebase();toast('Undone');};
+window.markAllDone=function(i){const it=curEv.stock[i];if(!it)return;it.used=it.qty;flashDc(i);renderCards();addWAMsg(`🔴 *${curEv.event_name}* — *${it.name}* fully consumed! All ${it.qty} done. _(${nowTime()})_`);addLog(it.name+' — all done');saveToFirebase();};
+window.restoreItem=function(i){const it=curEv.stock[i];if(!it)return;it.used=0;flashDc(i);renderCards();addLog(it.name+' — restored');saveToFirebase();toast('Restored');};
+window.toggleAddBottles=function(i){const row=gid('abtl-'+i);if(!row)return;const isOpen=row.classList.contains('open');document.querySelectorAll('.add-btl-row').forEach(r=>r.classList.remove('open'));if(!isOpen){row.classList.add('open');setTimeout(()=>{const inp=gid('abtl-qty-'+i);if(inp){inp.value='1';inp.focus();}},100);}};
+window.addExtraBottles=function(i){
+  const it=curEv.stock[i];if(!it)return;
+  const inp=gid('abtl-qty-'+i);const extra=parseInt(inp?inp.value:1)||1;
+  if(extra<1){toast('Enter at least 1');return;}
+  it.qty+=extra;if(!it.restocked)it.restocked=0;it.restocked+=extra;
+  const row=gid('abtl-'+i);if(row)row.classList.remove('open');
+  flashDc(i);renderCards();
+  addWAMsg(`🍾 *${curEv.event_name}*\n*Restock (${nowTime()}):* ${extra} extra ${it.cat==='beer'?'cans':'bottle'+(extra>1?'s':'')} of *${it.name}* added. Total: ${it.qty} · Remaining: ${getRem(it)}`);
+  addLog(`${it.name} — ${extra} extra added. Total now ${it.qty}`);saveToFirebase();toast(`+${extra} ${it.name} added!`);
+};
+window.addNewDrinkLive=function(){
+  const name=gid('live-add-name').value.trim();const qty=parseInt(gid('live-add-qty').value)||1;const cat=gid('live-add-cat').value;
+  if(!name){toast('Enter drink name');return;}
+  if(!curEv.stock)curEv.stock=[];
+  curEv.stock.push({name,cat,qty,used:0,restocked:0,addedLive:true});
+  gid('live-add-name').value='';gid('live-add-qty').value='1';
+  renderCards();addWAMsg(`🍾 *${curEv.event_name}*\n*New drink (${nowTime()}):* ${qty}x *${name}* added mid-event.`);
+  addLog(`New drink: ${qty}x ${name} (${cat})`);saveToFirebase();toast(`${name} added!`);
+};
+
+function buildSummaryMsg(){
+  const lines=curEv.stock.map(i=>`  • ${i.name}: ${i.used||0} used / ${getRem(i)} remaining`).join('\n');
+  return `🍸 *Rebelz Bartending — ${curEv.event_name}*\n*Update (${nowTime()}):*\n\n${lines}\n\n📊 ${curEv.stock.reduce((s,i)=>s+(i.used||0),0)} consumed · ${curEv.stock.reduce((s,i)=>s+getRem(i),0)} remaining\n\n_Rebelz Bartending Services_\n✦ Think of Party, Think of Us ✦`;
+}
+function rentalMsgLines(){
+  const r=curEv.returns&&curEv.returns.rental; if(!r||!r.length) return '';
+  return '\n\n🍷 *Rental Glassware:*\n'+r.map(g=>`  • ${g.name}: ${g.sent} sent${g.broken?` · ${g.broken} broken`:''}${g.missing?` · ${g.missing} missing`:''} · ${g.returned} back to office`).join('\n');
+}
+function buildClosingMsg(){
+  const consumed=curEv.stock.filter(i=>(i.used||0)>0).map(i=>`  • ${i.name}: ${i.used} consumed`).join('\n');
+  const leftover=curEv.stock.filter(i=>getRem(i)>0).map(i=>`  • ${i.name}: ${getRem(i)} left over`).join('\n');
+  let mlLines='';
+  if(curEv.closing&&curEv.closing.items){
+    mlLines=curEv.closing.items.filter(c=>(c.openBottles||0)>0||(c.mlLeft||0)>0).map(c=>`  • ${c.name}: ${c.openBottles} open bottle${c.openBottles!==1?'s':''} · approx ${c.mlLeft} ml left`).join('\n');
+  }
+  return `✅ *Rebelz Bartending Services*\n*CLOSING REPORT*\n*${curEv.event_name} — ${fmtDate(curEv.event_date)}*\n━━━━━━━━━━━━━━━\n\n🥃 *Consumed:*\n${consumed||'  None'}\n\n📦 *Left Over (Full Bottles):*\n${leftover||'  None'}${mlLines?`\n\n🍾 *Open Bottles & ML Remaining:*\n${mlLines}`:''}${rentalMsgLines()}\n\n📊 *Final Summary:*\n  Given: ${curEv.stock.reduce((s,i)=>s+i.qty,0)}\n  Consumed: ${curEv.stock.reduce((s,i)=>s+(i.used||0),0)}\n  Left Over: ${curEv.stock.reduce((s,i)=>s+getRem(i),0)}\n\n_Verified by Rebelz Bartending Services_\n✦ Think of Party, Think of Us ✦\nVijayawada · Hyderabad · Visakhapatnam`;
+}
+function openWA(msg,phone){const p=(phone||'').replace(/\D/g,'');const full=p.length===10?'91'+p:p;window.open('https://wa.me/'+full+'?text='+encodeURIComponent(msg),'_blank');}
+
+window.saveAndNotify=function(){saveToFirebase();const msg=buildSummaryMsg();addWAMsg(msg);addLog('Saved — '+curEv.stock.reduce((s,i)=>s+(i.used||0),0)+' consumed');toast('Saved! Tap WhatsApp to send.');};
+window.sendManualWA=function(){const msg=buildSummaryMsg();if(curEv.client_wa)openWA(msg,curEv.client_wa);if(curEv.owner_wa)setTimeout(()=>openWA(msg,curEv.owner_wa),700);if(!curEv.client_wa&&!curEv.owner_wa)openWA(msg,'');};
+// ---- CLOSING FLOW ----
+window.closeEventFn=function(){
+  showScreen('scr-closing');
+  gid('closing-ev-label').textContent=curEv.event_name;
+  const el=gid('close-items');
+  el.innerHTML=(curEv.stock||[]).map((it,i)=>{
+    const col=COLORS[it.cat]||'#888';
+    const na=isNonAlc(it.cat);
+    // Non-alcoholic: consumed only, no open-bottle / ML count. Alcohol: full inputs.
+    const inputs = na
+      ? `<div style="font-size:10px;color:var(--t3);font-family:var(--fm);padding:8px 2px 2px;line-height:1.6">Non-alcoholic — consumed <strong style="color:var(--gold2)">${it.used||0}</strong>, left <strong style="color:var(--gold2)">${getRem(it)}</strong>. No open-bottle count needed.</div>`
+      : `<div class="close-inputs">
+        <div class="close-inp-wrap"><label>Open Bottles</label><input class="close-inp" id="cb-open-${i}" type="number" min="0" value="0"/></div>
+        <div class="close-inp-wrap"><label>ML Left (approx)</label><input class="close-inp" id="cb-ml-${i}" type="number" min="0" value="0" placeholder="ml"/></div>
+      </div>`;
+    return `<div class="close-item">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0"></div>
+        <div style="flex:1"><div class="close-item-name">${it.name}</div><div class="close-item-sub">${it.cat} · given: ${it.qty} · consumed: ${it.used||0} · full left: ${getRem(it)}</div></div>
+      </div>
+      ${inputs}
+    </div>`;
+  }).join('')||'<div style="text-align:center;padding:14px;font-size:11px;color:var(--t3)">No stock items</div>';
+};
+window.cancelClosing=function(){showPanel();};
+const _closeEventFn=window.closeEventFn;
+window.closeEventFn=function(){
+  _closeEventFn();
+  const has=renderReturnCard();
+  gid('cl-photo-title').textContent=(has?'Step 3':'Step 2')+' — Closing Photos (Required)';
+  gid('cl-close-title').textContent=(has?'Step 4':'Step 3')+' — Close Event';
+};
+window.finalizeClose=function(){
+  if(!closePhotos[0]||!closePhotos[1]||!closePhotos[2]){toast('📷 Attach all 3 closing photos first!');return;}
+  const ret=collectReturns(); if(ret===false) return;
+  if(ret) curEv.returns=ret;
+  // Save closing verification data (admin + Excel)
+  curEv.closing={
+    items:(curEv.stock||[]).map((it,i)=>{
+      const na=isNonAlc(it.cat);
+      return {
+        name:it.name,cat:it.cat,
+        openBottles: na?0:(parseInt(gid('cb-open-'+i)?gid('cb-open-'+i).value:0)||0),
+        mlLeft: na?0:(parseInt(gid('cb-ml-'+i)?gid('cb-ml-'+i).value:0)||0)
+      };
+    }),
+    closedAt:nowISO()
+  };
+  if(!curEv.photos)curEv.photos={};
+  curEv.photos.closing=closePhotos.slice();
+  addLog('Closing verified — open bottles & ML recorded · 3 closing photos attached');
+  // Original closing flow — WhatsApp untouched
+  curEv.status='closed';gid('ev-status').value='closed';
+  const msg=buildClosingMsg();addWAMsg(msg);addLog('Event closed — final report sent');saveToFirebase();
+  if(curEv.client_wa)openWA(msg,curEv.client_wa);
+  if(curEv.owner_wa)setTimeout(()=>openWA(msg,curEv.owner_wa),700);
+  if(!curEv.client_wa&&!curEv.owner_wa)openWA(msg,'');
+  showPanel();toast('Event closed! ✦');
+};
+window.changeStatus=function(val){curEv.status=val;saveToFirebase();addLog('Status: '+val);toast(val==='live'?'Event is LIVE! ✦':val==='closed'?'Event closed':'Setting up');};
+
+function addWAMsg(msg){
+  waLog.push({msg,time:nowTime()});
+  const feed=gid('wa-feed');gid('wa-empty').style.display='none';
+  const div=document.createElement('div');div.className='wa-msg';
+  div.innerHTML=msg.replace(/\*(.*?)\*/g,'<strong>$1</strong>').replace(/\n/g,'<br/>')+'<div class="wa-time">'+nowTime()+'</div>';
+  feed.insertBefore(div,feed.firstChild);
+}
+function addLog(msg){if(!curEv.log)curEv.log=[];curEv.log.unshift({msg,time:nowISO()});saveToFirebase();renderLog();}
+function renderLog(){
+  const el=gid('bar-log');
+  if(!curEv||!curEv.log||!curEv.log.length){el.innerHTML='<div style="padding:14px;text-align:center;font-size:11px;color:var(--t3)">No activity yet</div>';return;}
+  el.innerHTML=curEv.log.slice(0,20).map(l=>{
+    const t=new Date(l.time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="log-item"><span style="color:var(--t2);flex:1">${l.msg}</span><span style="color:var(--t3);font-family:var(--fm);font-size:9px;flex-shrink:0">${t}</span></div>`;
+  }).join('');
+}
+
+// =====================================================================
+// STORE INDENT · REBELZ SUPPLIES · RETURN TO OFFICE   (Phase 2 — step 3)
+// Data on the event:
+//   indent      -> written by the Store Manager (store.html)
+//   indent_rcv  -> what the bartender actually received (sent vs received)
+//   extras      -> items added mid-event (source: store / local)
+//   returns     -> what goes back to the office + rental glass breakage
+// No costing anywhere — only names, units and counts.
+// =====================================================================
+const SCATS=['Soft drinks','Soda & mixers','Energy drinks','Juices','Syrups','Ice','Fruits & veggies','Disposables','Bar props','Miscellaneous','Rental glassware'];
+// used up at the event — never returned to the office
+const NO_RETURN=['Ice','Fruits & veggies','Miscellaneous'];
+const SUNITS=['bottle','can','packet','bag','pcs','litre','kg','box','tray'];
+const RENTAL='Rental glassware';
+let rcvDraft=null, rcvDraftVer=null, rcvEditing=false, extraSrc='store';
+function escH(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function indentVer(){return (curEv.indent&&curEv.indent.version)||1;}
+function indentConfirmed(){return !!(curEv.indent&&curEv.indent_rcv&&curEv.indent_rcv.version===indentVer()&&!rcvEditing);}
+function skey(cat,name){return cat+'|'+String(name).trim().toLowerCase();}
+function asList(x){return Array.isArray(x)?x:(x?Object.values(x):[]);}
+
+// Everything Rebelz supplied at this event = confirmed indent (received) + mid-event extras
+function suppliesGiven(){
+  const m={}, order=[];
+  const add=(cat,name,unit,q)=>{const k=skey(cat,name);if(!m[k]){m[k]={cat,name,unit,given:0};order.push(k);}m[k].given+=q;};
+  if(curEv.indent_rcv) asList(curEv.indent_rcv.items).forEach(l=>add(l.cat,l.name,l.unit,l.received||0));
+  asList(curEv.extras).forEach(x=>add(x.cat,x.name,x.unit,x.qty||0));
+  return order.map(k=>m[k]).filter(x=>x.given>0);
+}
+
+// ---------- Indent "received" confirmation (setup screen + live panel) ----------
+function indentHTML(){
+  const ind=curEv.indent; if(!ind) return '';
+  const items=asList(ind.items);
+  if(indentConfirmed()){
+    const r=curEv.indent_rcv, rows=asList(r.items), short=rows.filter(x=>x.received!==x.sent);
+    let h=`<div class="card-title" style="color:var(--gold2)">📦 Store Indent — Received ✓</div>
+      <div style="font-size:11px;color:var(--grn);font-family:var(--fm);line-height:1.6;margin-bottom:6px">Confirmed ${escH(fmtDT(r.confirmed_at))} · ${rows.length} items${short.length?` · <span style="color:var(--red)">${short.length} not matching</span>`:' · all matched'}</div>`;
+    if(short.length) h+=short.map(x=>`<div class="sp-row"><div class="sp-name">${escH(x.name)}<div class="sp-sub">sent ${x.sent} · received ${x.received} ${escH(x.unit)}</div></div><span class="sp-tag sp-bad">${x.received-x.sent>0?'+':''}${x.received-x.sent}</span></div>`).join('');
+    h+=`<button class="btn btn-ghost" style="font-size:11px;padding:9px;margin-top:8px" onclick="editRcv()">✏️ Edit received counts</button>`;
+    return h;
+  }
+  const changed=curEv.indent_rcv&&curEv.indent_rcv.version!==indentVer()&&!rcvEditing;
+  if(!rcvDraft||rcvDraftVer!==indentVer()||rcvDraft.length!==items.length){
+    const prev={}; if(curEv.indent_rcv) asList(curEv.indent_rcv.items).forEach(x=>prev[skey(x.cat,x.name)]=x.received);
+    rcvDraft=items.map(l=>{const p=prev[skey(l.cat,l.name)];return (p!=null&&rcvEditing)?p:l.qty;}); rcvDraftVer=indentVer();
+  }
+  let h=`<div class="card-title" style="color:var(--gold2)">📦 Store Indent — Check & Confirm</div>
+    <div class="photo-note">${changed?'<strong style="color:var(--amb)">The store updated this indent — please check and confirm again.</strong><br/>':''}The store sent these items. Count them when they reach you. If a count is different, change the number — the office will see both.</div>`;
+  SCATS.forEach(cat=>{
+    const rows=items.map((l,i)=>[l,i]).filter(([l])=>l.cat===cat); if(!rows.length) return;
+    h+=`<div class="sp-grp"><span>${escH(cat)}</span>${cat===RENTAL?'<span class="sp-tag sp-warn">count carefully</span>':''}</div>`;
+    rows.forEach(([l,i])=>{
+      const v=rcvDraft[i];
+      h+=`<div class="sp-row"><div class="sp-name">${escH(l.name)}<div class="sp-sub">sent: ${l.qty} ${escH(l.unit)}</div></div>
+        <input class="sp-inp${v!==l.qty?' diff':''}" type="number" inputmode="numeric" min="0" value="${v}" oninput="rcvSet(${i},this)"/></div>`;
+    });
+  });
+  h+=`<div class="divider"></div>
+    <button class="btn btn-gold" onclick="confirmRcv(true)">✅ All Received — Same as Sent</button>
+    <button class="btn btn-ghost" style="border-color:var(--gold-dim);color:var(--gold2)" onclick="confirmRcv(false)">Confirm My Counts</button>
+    ${rcvEditing?'<button class="btn btn-ghost" style="font-size:11px;padding:9px" onclick="cancelRcvEdit()">Cancel</button>':''}`;
+  return h;
+}
+function renderIndentCard(){
+  const el=gid('indent-card'); if(!el) return;
+  if(!curEv.indent){el.style.display='none';return;}
+  el.style.display='block'; el.innerHTML=indentHTML();
+}
+window.rcvSet=function(i,inp){
+  const sent=asList(curEv.indent.items)[i].qty;
+  rcvDraft[i]=Math.max(0,parseInt(inp.value,10)||0);
+  inp.classList.toggle('diff',rcvDraft[i]!==sent);
+};
+window.confirmRcv=function(asSent){
+  const items=asList(curEv.indent.items);
+  const rows=items.map((l,i)=>({cat:l.cat,name:l.name,unit:l.unit,sent:l.qty,received:asSent?l.qty:(rcvDraft?rcvDraft[i]:l.qty)}));
+  const short=rows.filter(r=>r.received!==r.sent).length;
+  curEv.indent_rcv={items:rows,version:indentVer(),confirmed_at:nowISO(),mismatch:short};
+  rcvEditing=false; rcvDraft=null;
+  addLog('Store indent received — '+rows.length+' items'+(short?' · '+short+' NOT matching':' · all matched'));
+  toast(short?'Saved — '+short+' item(s) flagged to office':'Indent confirmed ✓');
+  renderIndentCard(); renderSupplies();
+};
+window.editRcv=function(){rcvEditing=true;rcvDraft=null;renderIndentCard();renderSupplies();};
+window.cancelRcvEdit=function(){rcvEditing=false;rcvDraft=null;renderIndentCard();renderSupplies();};
+
+// ---------- Live panel: Rebelz Supplies + "+ Add Items" ----------
+function keepVals(ids){const v={};ids.forEach(id=>{const e=gid(id);if(e)v[id]=e.value;});return v;}
+function putVals(v){Object.entries(v).forEach(([id,x])=>{const e=gid(id);if(e)e.value=x;});}
+function renderSupplies(){
+  const el=gid('supplies-card'); if(!el||!curEv) return;
+  const extras=asList(curEv.extras);
+  if(!curEv.indent&&!curEv.non_alc&&!extras.length){el.style.display='none';return;}
+  const saved=keepVals(['ex-cat','ex-name','ex-unit','ex-qty']);
+  el.style.display='block';
+  let h='';
+  if(curEv.indent&&!indentConfirmed()) h+=`<div style="background:#ff7a4512;border:0.5px solid #ff7a4540;border-radius:12px;padding:12px;margin-bottom:12px">${indentHTML()}</div>`;
+  const given=suppliesGiven();
+  h+=`<div class="card-title" style="color:var(--gold2)">🥤 Rebelz Supplies at this Event</div>`;
+  if(!given.length) h+=`<div class="photo-note">No Rebelz items recorded yet.</div>`;
+  SCATS.forEach(cat=>{
+    const rows=given.filter(g=>g.cat===cat); if(!rows.length) return;
+    h+=`<div class="sp-grp"><span>${escH(cat)}</span></div>`+rows.map(g=>`<div class="sp-row"><div class="sp-name">${escH(g.name)}</div><div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--gold2)">${g.given}<span style="font-size:10px;color:var(--t3);font-family:var(--fm);margin-left:4px">${escH(g.unit)}</span></div></div>`).join('');
+  });
+  const names=[...new Set([...asList(curEv.indent&&curEv.indent.items),...extras].map(x=>x.name))];
+  h+=`<div class="divider"></div>
+    <div class="card-title" style="margin-bottom:6px">＋ Add Items (mid-event)</div>
+    <div class="photo-note" style="margin-bottom:8px">Ran short? Add what came in — from the store, or what you bought nearby.</div>
+    <div class="src-toggle">
+      <div class="src-btn${extraSrc==='store'?' on':''}" onclick="setSrc('store')">📦 Sent by Store</div>
+      <div class="src-btn${extraSrc==='local'?' on':''}" onclick="setSrc('local')">🛒 Bought Locally</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <select class="inp" id="ex-cat" style="font-size:13px">${SCATS.map(c=>`<option>${escH(c)}</option>`).join('')}</select>
+      <select class="inp" id="ex-unit" style="font-size:13px">${SUNITS.map(u=>`<option>${u}</option>`).join('')}</select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 72px;gap:8px;margin-bottom:8px">
+      <input class="inp" id="ex-name" list="ex-names" placeholder="Item — e.g. Red Bull" style="font-size:13px"/>
+      <input class="inp" id="ex-qty" type="number" inputmode="numeric" min="1" placeholder="Qty" style="text-align:center;font-size:13px"/>
+    </div>
+    <datalist id="ex-names">${names.map(n=>`<option value="${escH(n)}">`).join('')}</datalist>
+    <button class="btn btn-ghost" style="border-color:var(--gold-dim);color:var(--gold2);font-size:12px;padding:11px" onclick="addExtra()">＋ Add Item</button>`;
+  if(extras.length){
+    h+=`<div class="sp-grp"><span>Added during event</span></div>`+extras.map((x,i)=>`<div class="sp-row">
+      <div class="sp-name">${escH(x.name)} <span style="color:var(--gold2);font-weight:700">× ${x.qty}</span> <span style="font-size:10px;color:var(--t3)">${escH(x.unit)}</span>
+      <div class="sp-sub">${escH(x.cat)} · ${escH(fmtDT(x.at))}</div></div>
+      <span class="sp-tag ${x.source==='local'?'sp-warn':'sp-ok'}">${x.source==='local'?'Bought locally':'From store'}</span>
+      <button class="remove-x" onclick="delExtra(${i})" aria-label="Remove">✕</button></div>`).join('');
+  }
+  el.innerHTML=h; putVals(saved);
+}
+window.setSrc=function(s){extraSrc=s;document.querySelectorAll('.src-btn').forEach((b,i)=>b.classList.toggle('on',(i===0&&s==='store')||(i===1&&s==='local')));};
+window.addExtra=function(){
+  const cat=gid('ex-cat').value, name=gid('ex-name').value.trim(), unit=gid('ex-unit').value, qty=parseInt(gid('ex-qty').value,10);
+  if(!name){toast('Enter the item name');return;}
+  if(!qty||qty<1){toast('Enter quantity');return;}
+  const extras=asList(curEv.extras); extras.push({cat,name,unit,qty,source:extraSrc,at:nowISO()}); curEv.extras=extras;
+  gid('ex-name').value=''; gid('ex-qty').value='';
+  addLog(`Added mid-event: ${qty} ${unit} ${name} (${extraSrc==='local'?'bought locally':'sent by store'})`);
+  renderSupplies(); toast(name+' added ✓');
+};
+window.delExtra=function(i){
+  const extras=asList(curEv.extras), x=extras[i]; if(!x) return;
+  if(!confirm('Remove '+x.qty+' '+x.name+'? (only if it was added by mistake)')) return;
+  extras.splice(i,1); curEv.extras=extras; addLog('Removed mid-event item: '+x.qty+' '+x.name); renderSupplies();
+};
+
+// ---------- Closing: Return to Office + rental glass breakage ----------
+function renderReturnCard(){
+  const el=gid('return-card'); if(!el) return false;
+  const given=suppliesGiven().filter(g=>NO_RETURN.indexOf(g.cat)<0);
+  if(!given.length){el.style.display='none';return false;}
+  el.style.display='block';
+  const rental=given.filter(g=>g.cat===RENTAL), other=given.filter(g=>g.cat!==RENTAL);
+  let h=`<div class="card-title">Step 2 — Return to Office (Rebelz items)</div>`;
+  if(other.length){
+    h+=`<div class="photo-note">How many of each are <strong style="color:var(--gold2)">going back to the office</strong>? Unopened drinks, leftover disposables, all bar props. Ice is not counted.</div>`;
+    SCATS.forEach(cat=>{
+      const rows=other.filter(g=>g.cat===cat); if(!rows.length) return;
+      h+=`<div class="sp-grp"><span>${escH(cat)}</span></div>`+rows.map(g=>{
+        const k=given.indexOf(g), def=cat==='Bar props'?g.given:0;
+        return `<div class="sp-row"><div class="sp-name">${escH(g.name)}<div class="sp-sub">had ${g.given} ${escH(g.unit)}</div></div>
+          <input class="sp-inp" id="rt-${k}" type="number" inputmode="numeric" min="0" max="${g.given}" value="${def}"/></div>`;
+      }).join('');
+    });
+  }
+  if(rental.length){
+    h+=`<div class="divider"></div><div class="sp-grp"><span>🍷 Rental Glassware — enter broken &amp; missing</span><span class="sp-tag sp-warn">client sees this</span></div>`;
+    rental.forEach(g=>{
+      const k=given.indexOf(g);
+      h+=`<div style="padding:8px 0;border-top:0.5px solid var(--b1)"><div class="sp-name">${escH(g.name)} <span class="sp-sub">· ${g.given} sent</span></div>
+        <div class="rt-grid">
+          <div><label>Broken</label><input class="close-inp" id="rg-brk-${k}" type="number" inputmode="numeric" min="0" value="0" oninput="rgCalc(${k},${g.given})"/></div>
+          <div><label>Missing</label><input class="close-inp" id="rg-mis-${k}" type="number" inputmode="numeric" min="0" value="0" oninput="rgCalc(${k},${g.given})"/></div>
+          <div><label>Back to office</label><div class="close-inp" id="rg-ret-${k}" style="color:var(--t2)">${g.given}</div></div>
+        </div></div>`;
+    });
+  }
+  el.innerHTML=h;
+  return true;
+}
+window.rgCalc=function(k,sent){
+  // sent − broken − missing = glasses going back to the office
+  const b=parseInt(gid('rg-brk-'+k).value,10)||0, m=parseInt(gid('rg-mis-'+k).value,10)||0, r=sent-b-m;
+  const el=gid('rg-ret-'+k); el.textContent=r<0?'!':r; el.style.color=r<0?'var(--red)':(b||m)?'var(--amb)':'var(--t2)';
+};
+// returns null (nothing to return), false (invalid) or the returns object
+function collectReturns(){
+  const el=gid('return-card'); if(!el||el.style.display==='none') return null;
+  const given=suppliesGiven().filter(g=>NO_RETURN.indexOf(g.cat)<0);
+  const items=[], rental=[];
+  for(let k=0;k<given.length;k++){
+    const g=given[k];
+    if(g.cat===RENTAL){
+      const b=parseInt(gid('rg-brk-'+k).value,10)||0, m=parseInt(gid('rg-mis-'+k).value,10)||0;
+      if(b<0||m<0||b+m>g.given){toast(`🍷 ${g.name}: broken + missing is more than ${g.given} sent`);return false;}
+      rental.push({name:g.name,unit:g.unit,sent:g.given,returned:g.given-b-m,broken:b,missing:m});
+    } else {
+      const r=parseInt(gid('rt-'+k).value,10)||0;
+      if(r>g.given){toast(`${g.name}: return (${r}) is more than you had (${g.given})`);return false;}
+      items.push({cat:g.cat,name:g.name,unit:g.unit,given:g.given,returned:r});
+    }
+  }
+  const lost=rental.reduce((s,g)=>s+g.broken+g.missing,0);
+  addLog('Return to office recorded — '+items.length+' items'+(rental.length?' · rental glasses: '+lost+' broken/missing':''));
+  return {items,rental,at:nowISO()};
+}
+
+// ---------- Weak network banner ----------
+setTimeout(()=>{
+  onValue(ref(db,'.info/connected'),s=>{gid('net-banner').style.display=s.val()?'none':'block';});
+},2500);
+
+// ===================== SMART INPUT (bartender) =====================
+// Popular brands per type: typing suggests brands, picking one sets the type automatically.
+const BRANDS={
+ whiskey:["Royal Stag","Blenders Pride","Imperial Blue","McDowell's No.1","Signature","Antiquity Blue","Royal Challenge","Officer's Choice","8PM","Sterling Reserve B7","Rockford Reserve","Oaksmith","Teacher's","100 Pipers","Black Dog","Black & White","Vat 69","Ballantine's","Dewar's","Johnnie Walker Red Label","Johnnie Walker Black Label","Jameson","Jack Daniel's","Chivas Regal 12","Monkey Shoulder","Glenfiddich 12","Glenlivet 12","Amrut","Paul John"],
+ vodka:["Smirnoff","Magic Moments","Romanov","White Mischief","Absolut","Eristoff","Ketel One","Grey Goose","Belvedere","Ciroc"],
+ gin:["Blue Riband","Gordon's","Greater Than","Stranger & Sons","Jaisalmer","Beefeater","Bombay Sapphire","Tanqueray","Hendrick's"],
+ rum:["Old Monk","McDowell's Celebration","Contessa","Bacardi White","Bacardi Black","Captain Morgan","Malibu","Havana Club"],
+ tequila:["Camino Real","Jose Cuervo Gold","Jose Cuervo Silver","Olmeca","Patron Silver","Don Julio"],
+ brandy:["Mansion House","Honey Bee","Morpheus","McDowell's No.1 Brandy","Hennessy VS","Remy Martin VSOP"],
+ beer:["Kingfisher Premium","Kingfisher Ultra","Kingfisher Strong","Budweiser","Budweiser Magnum","Heineken","Carlsberg","Tuborg","Corona","Bira 91 White","Hoegaarden","Simba","Knock Out"],
+ wine:["Sula Shiraz","Sula Chenin Blanc","Sula Brut","Grover Zampa","Fratelli","Big Banyan","Jacob's Creek","Chandon Brut"],
+ other:["Jägermeister","Baileys","Kahlua","Triple Sec","Cointreau","Campari","Aperol","Martini Bianco"]
+};
+const BRAND_CAT={}; Object.entries(BRANDS).forEach(([c,l])=>l.forEach(b=>BRAND_CAT[b.toLowerCase()]=c));
+function brandOpts(cat){
+  const pri=(BRANDS[cat]||[]), rest=Object.entries(BRANDS).filter(([c])=>c!==cat).flatMap(([c,l])=>l);
+  return [...pri,...rest].map(b=>`<option value="${b.replace(/"/g,'&quot;')}">`).join('');
+}
+function mountBrands(nameId,catId,dlId){
+  const nm=gid(nameId), ct=gid(catId); if(!nm||!ct) return;
+  let dl=gid(dlId); if(!dl){dl=document.createElement('datalist');dl.id=dlId;document.body.appendChild(dl);}
+  const fill=()=>{dl.innerHTML=brandOpts(ct.value);}; fill();
+  ct.addEventListener('change',fill);
+  nm.addEventListener('change',()=>{const c=BRAND_CAT[nm.value.trim().toLowerCase()];if(c&&[...ct.options].some(o=>o.value===c)&&ct.value!==c){ct.value=c;fill();toast('Type set to '+c);}});
+}
+mountBrands('sa-name','sa-cat','dl-brands');
+mountBrands('live-add-name','live-add-cat','dl-brands-live');
+// quick quantity chips
+function mountQty(boxId,inpId){
+  const box=gid(boxId), inp=gid(inpId); if(!box||!inp) return;
+  const draw=()=>{box.innerHTML=[1,2,3,6,12,24].map(n=>`<div class="qc${inp.value==n?' on':''}" data-q="${n}">${n===24?'🍺 24 · crate':n===12?'12 · half':'× '+n}</div>`).join('');};
+  box.addEventListener('click',e=>{const q=e.target.closest('[data-q]');if(!q)return;inp.value=q.dataset.q;draw();});
+  inp.addEventListener('input',draw); draw();
+  return draw;
+}
+const _drawSa=mountQty('sa-chips','sa-qty'), _drawLive=mountQty('live-chips','live-add-qty');
+const _setupAdd=window.setupAdd; window.setupAdd=function(){_setupAdd();_drawSa&&_drawSa();gid('sa-name').focus();};
+const _addLive=window.addNewDrinkLive; window.addNewDrinkLive=function(){_addLive();_drawLive&&_drawLive();};
+// "Same team as last time" — remembered on this phone
+const _showTeam=showTeam;
+function lastTeam(){try{return JSON.parse(localStorage.getItem('rbz_last_team')||'null');}catch(e){return null;}}
+function offerSameTeam(){
+  const t=lastTeam(), b=gid('same-team'); if(!b) return;
+  if(t&&t.members&&t.members.length){b.style.display='block';b.innerHTML='↺ Same team as last time<br/><span style="font-weight:600;color:var(--t2)">'+t.members.map(m=>m.replace(/</g,'&lt;')).join(', ')+'</span>';}
+  else b.style.display='none';
+}
+window.sameTeam=function(){
+  const t=lastTeam(); if(!t) return;
+  const c=gid('t-count'); c.value=t.members.length; c.dispatchEvent(new Event('input'));
+  t.members.forEach((m,i)=>{const el=gid('t-name-'+i);if(el)el.value=m;});
+  toast('Team filled ✓ — edit if anyone changed');
+};
+const _saveTeam=window.saveTeam;
+window.saveTeam=function(){
+  const n=parseInt(gid('t-count').value)||0, members=[];
+  for(let i=0;i<n;i++){const v=gid('t-name-'+i)?gid('t-name-'+i).value.trim():'';if(v)members.push(v);}
+  if(members.length===n&&n>0) localStorage.setItem('rbz_last_team',JSON.stringify({members}));
+  _saveTeam();
+};
+const _teamObs=new MutationObserver(()=>{if(gid('scr-team')&&gid('scr-team').classList.contains('active'))offerSameTeam();});
+if(gid('scr-team')) _teamObs.observe(gid('scr-team'),{attributes:true,attributeFilter:['class']});
+
+function rbzBack(){
+  const a=document.querySelector('.screen.active'), id=a&&a.id;
+  if(!curEv||!curEv._loggedIn) return false;
+  if(id==='scr-closing'){ showPanel(); window.scrollTo(0,0); return true; }      // closing -> live panel
+  if(id==='scr-setup'){                                                          // stock -> team (names kept)
+    showTeam();
+    const t=curEv.team;
+    if(t&&t.members&&t.members.length){ const c=gid('t-count'); c.value=t.members.length; c.dispatchEvent(new Event('input')); t.members.forEach((m,i)=>{const el=gid('t-name-'+i); if(el) el.value=m;}); }
+    window.scrollTo(0,0); return true;
+  }
+  if(id==='scr-team'&&curEv.menu_img){ showMenu(); window.scrollTo(0,0); return true; } // team -> menu card
+  return false;
+}
+// ===== PHONE BACK BUTTON — stay inside the app =====
+// Back closes the open popup / goes to the previous step instead of
+// leaving the app. On the main screen: "Press back again to exit".
+(function(){
+  let armed=0;
+  function guard(){ if(!(history.state&&history.state.rbzBack)) history.pushState({rbzBack:1},''); }
+  // add the guard after the user touches the page (Chrome ignores it otherwise)
+  ['pointerdown','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,guard,{capture:true,passive:true}));
+  window.addEventListener('popstate',()=>{
+    let handled=false; try{ handled=rbzBack(); }catch(e){ console.error(e); }
+    if(handled){ armed=0; guard(); return; }
+    if(Date.now()-armed<2500) return;            // second press -> leaves next time
+    armed=Date.now(); toast('Press back again to exit');
+  });
+})();
+</script>
+</body>
+</html>
